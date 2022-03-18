@@ -1,5 +1,26 @@
-<p align='center'><img width=256px src=https://user-images.githubusercontent.com/64651989/159095590-39a9c3ce-4a44-46b1-a597-515a3b282015.png /><p>
-z
+<p align='center'>
+  <img
+    width=256px
+    src=https://user-images.githubusercontent.com/64651989/159095590-39a9c3ce-4a44-46b1-a597-515a3b282015.png
+  />
+</p>
+
+<p align='center'>
+  <a href="#planar-bridge"><b>Planar Bridge</b></a>
+  <b>|</b>
+  <a href="#requirements">Requirements</a>
+  <b>|</b>
+  <a href="#usage">Usage</a>
+  <b>|</b>
+  <a href="#configuration">Configuration</a>
+  <b>|</b>
+  <a href="#credits">Credits</a>
+  <b>|</b>
+  <a href="#license">License</a>
+</p>
+
+---
+
 # Planar Bridge
 
 Planar Bridge is a webscraping tool that builds and maintains locally stored
