@@ -1,3 +1,7 @@
+.. image:: https://imgur.com/P9gPPgm.png
+    :height: 256px
+    :align: center
+
 Planar Bridge
 =============
 
@@ -55,6 +59,12 @@ it in ``~/.local/share/planar-bridge/``.
 
 Currently, the only configurations you can make to Planar Bridge are which
 sets, set types, and promo types to exclude from the download process.
+
+
+Credits
+-------
+
+Logo based on design made by `Lorc <https://lorcblog.blogspot.com/>`_.
 
 
 License
