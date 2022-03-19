@@ -5,21 +5,26 @@ from typing import Any
 import gzip
 import json
 import time
+import os
 
 import requests
 import tomli
 
 
-SOURCE_DIR = Path(__file__).parent.resolve()
+def os_local() -> str:
 
-LOCAL_DIR = (Path.home() / '.local/share/planar-bridge').resolve()
+    return '.local/share' if os.name == 'posix' else 'AppData/Local'
 
-IMG_DIR = LOCAL_DIR / 'imgs'
+
+LOCAL_DIR = (Path.home() / os_local() / 'planar-bridge').resolve()
+SOURCE_DIR = Path(__file__).resolve().parent
+
 JSON_DIR = LOCAL_DIR / 'json'
+IMG_DIR = LOCAL_DIR / 'imgs'
 
 LOCAL_DIR.mkdir(exist_ok=True, parents=True)
-IMG_DIR.mkdir(exist_ok=True)
 JSON_DIR.mkdir(exist_ok=True)
+IMG_DIR.mkdir(exist_ok=True)
 
 BULK_PATH = JSON_DIR / 'AllPrintings.json'
 META_PATH = JSON_DIR / 'Meta.json'
