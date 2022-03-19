@@ -27,18 +27,15 @@ META_PATH = JSON_DIR / 'Meta.json'
 
 def get_toml() -> dict[str, Any]:
 
-    config_source = (SOURCE_DIR / 'config.toml').read_text('UTF-8')
-    config_source = tomli.loads(config_source)
-
     config_local = LOCAL_DIR / 'config.toml'
+    config_source = SOURCE_DIR / 'config.toml'
 
     if config_local.exists():
-        config_local = config_local.read_text('UTF-8')
-        config_local = tomli.loads(config_local)
+        config = config_local.read_text('UTF-8')
     else:
-        config_local = {}
+        config = config_source.read_text('UTF-8')
 
-    return config_source | config_local
+    return tomli.loads(config)
 
 
 CONFIG = get_toml()
@@ -48,13 +45,14 @@ class PaperObject:  # pylint: disable=too-many-instance-attributes
 
     def __init__(self, paper_dict: dict[str, Any], set_dir: Path) -> None:
 
-        promo_cuts: list[str] = CONFIG['exclude']['promos']
         promo_types: list[str] | None = paper_dict.get('promoTypes')
 
         if promo_types is None:
             promo_types = []
 
-        self.bad_promo: bool = len(set(promo_cuts) & set(promo_types)) > 0
+        promo_intrxn = set(CONFIG['exclude']['promos']) & set(promo_types)
+
+        self.bad_promo: bool = len(promo_intrxn) > 0
 
         self.uuid: str = paper_dict['uuid']
         self.scry_id: str = paper_dict['identifiers']['scryfallId']
@@ -168,17 +166,23 @@ class SetObject:
 
         return states_dict
 
+    def all_highres(self) -> bool:
+
+        return all(self.load_states().values())
+
     def pull_objs(self) -> None:
 
         self.set_dir.mkdir(exist_ok=True)
 
         states_dict = self.load_states()
 
+        print(self.set_code, '------------------------------------')
+
         for paper_obj in self.obj_list:
 
             paper_obj = PaperObject(paper_obj, self.set_dir)
 
-            if paper_obj.bad_promo or paper_obj.img_not_eng():
+            if paper_obj.bad_promo:
                 break
 
             paper_state: bool | None = states_dict.get(paper_obj.img_name)
@@ -196,7 +200,9 @@ class SetObject:
                 states_dict[paper_obj.img_name] = img_res
 
         if states_dict != self.load_states():
-            self.states_path.write_text(json.dumps(states_dict), 'UTF-8')
+            self.states_path.write_text(
+                json.dumps(states_dict, sort_keys=True), 'UTF-8'
+            )
 
 
 @yaspin(text='downloading & extracting bulk files...')
@@ -217,8 +223,11 @@ def check_meta() -> bool:
     if not BULK_PATH.exists() or not META_PATH.exists():
         return True
 
-    meta_source = requests.get('https://mtgjson.com/api/v5/Meta.json').json()
-    meta_source = str(meta_source['meta']['version'])
+    uri = requests.get('https://mtgjson.com/api/v5/Meta.json')
+    if uri.status_code != 200:
+        raise Exception(f"HTTP request gave {uri.status_code} for {uri.url}")
+
+    meta_source = str(uri.json()['meta']['version'])
 
     meta_local = json.loads(META_PATH.read_bytes())
     meta_local = str(meta_local['meta']['version'])
@@ -277,22 +286,20 @@ def planar_bridge() -> None:
 
         set_obj = SetObject(set_obj)
 
-        if set_obj.to_skip or states_dict.get(set_obj.set_code):
-            break
+        if not set_obj.to_skip and not states_dict.get(set_obj.set_code):
 
-        set_obj.pull_objs()
+            set_obj.pull_objs()
+            states_dict.update({set_obj.set_code: set_obj.all_highres()})
 
-    if states_dict != load_states(states_path):
-        states_path.write_text(json.dumps(states_dict), 'UTF-8')
+            if states_dict != load_states(states_path):
+                states_path.write_text(
+                    json.dumps(states_dict, sort_keys=True), 'UTF-8'
+                )
 
 
-def main() -> None:
+if __name__ == '__main__':
 
     if check_meta():
         pull_bulk()
 
     planar_bridge()
-
-
-if __name__ == '__main__':
-    main()
