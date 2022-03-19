@@ -5,9 +5,9 @@ from typing import Any
 import gzip
 import json
 import time
+import yaml
 
 import requests
-import tomli
 
 
 SOURCE_DIR = Path(__file__).parent.resolve()
@@ -24,20 +24,20 @@ BULK_PATH = JSON_DIR / 'AllPrintings.json'
 META_PATH = JSON_DIR / 'Meta.json'
 
 
-def get_toml() -> dict[str, Any]:
+def get_yaml() -> dict[str, Any]:
 
-    config_local = LOCAL_DIR / 'config.toml'
-    config_source = SOURCE_DIR / 'config.toml'
+    config_local = LOCAL_DIR / 'config.yaml'
+    config_source = SOURCE_DIR / 'config.yaml'
 
-    if config_local.exists():
-        config = config_local.read_text('UTF-8')
-    else:
-        config = config_source.read_text('UTF-8')
+    config_main = config_local if config_local else config_source
 
-    return tomli.loads(config)
+    with open(config_main, 'rt', encoding='UTF-8') as fob:
+        config: dict[str, Any] = yaml.safe_load(fob)
+
+    return config
 
 
-CONFIG = get_toml()
+CONFIG = get_yaml()
 
 
 class PaperObject:  # pylint: disable=too-many-instance-attributes

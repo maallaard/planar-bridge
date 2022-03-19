@@ -1,0 +1,27 @@
+exclude:
+  types:
+    - funny
+    - memorabilia
+  sets:
+    - MB1
+    - PDRC
+    - PLIST
+    - PURL
+  promos:
+    - datestamped
+    - draftweekend
+    - gameday
+    - intropack
+    - jpwalker
+    - mediainsert
+    - planeswalkerstamped
+    - playerrewards
+    - premiereshop
+    - prerelease
+    - promopack
+    - release
+    - setpromo
+    - stamped
+    - themepack
+    - tourney
+    - wizardsplaynetwork
