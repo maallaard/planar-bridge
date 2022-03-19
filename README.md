@@ -51,11 +51,12 @@ As of now, Planar Bridge is only supported on Linux and MacOS, and is only
 confirmed to work with Python 3.10.
 
 To install Planar Bridge, start by installing the
-[requests](https://pypi.org/project/requests/) package using pip, and then
-clone this repository. This can be done in two commands:
+[requests](https://pypi.org/project/requests/) and
+[tomli](https://pypi.org/project/tomli/) packages using pip, and then clone
+this repository. This can be done in two commands:
 
 ```sh
-python3 -m pip install requests
+python3 -m pip install requests tomli
 git clone https://github.com/maallaard/planar-bridge.git
 ```
 

@@ -5,14 +5,15 @@ from typing import Any
 import gzip
 import json
 import time
-import yaml
 
 import requests
+import tomli
 
 
 SOURCE_DIR = Path(__file__).parent.resolve()
 
-LOCAL_DIR = (Path.home() / '.local' / 'share' / 'planar-bridge').resolve()
+LOCAL_DIR = (Path.home() / '.local/share/planar-bridge').resolve()
+
 IMG_DIR = LOCAL_DIR / 'imgs'
 JSON_DIR = LOCAL_DIR / 'json'
 
@@ -24,20 +25,17 @@ BULK_PATH = JSON_DIR / 'AllPrintings.json'
 META_PATH = JSON_DIR / 'Meta.json'
 
 
-def get_yaml() -> dict[str, Any]:
+def get_toml() -> dict[str, Any]:
 
-    config_local = LOCAL_DIR / 'config.yaml'
-    config_source = SOURCE_DIR / 'config.yaml'
+    config_local = LOCAL_DIR / 'config.toml'
+    config_source = SOURCE_DIR / 'config.toml'
 
-    config_main = config_local if config_local else config_source
+    config = config_local if config_local.exists() else config_source
 
-    with open(config_main, 'rt', encoding='UTF-8') as fob:
-        config: dict[str, Any] = yaml.safe_load(fob)
-
-    return config
+    return tomli.loads(config.read_text('UTF-8'))
 
 
-CONFIG = get_yaml()
+CONFIG = get_toml()
 
 
 class PaperObject:  # pylint: disable=too-many-instance-attributes
