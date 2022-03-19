@@ -6,7 +6,6 @@ import gzip
 import json
 import time
 
-from yaspin import yaspin
 import requests
 import tomli
 
@@ -176,8 +175,6 @@ class SetObject:
 
         states_dict = self.load_states()
 
-        print(self.set_code, '------------------------------------')
-
         for paper_obj in self.obj_list:
 
             paper_obj = PaperObject(paper_obj, self.set_dir)
@@ -205,8 +202,9 @@ class SetObject:
             )
 
 
-@yaspin(text='downloading & extracting bulk files...')
 def pull_bulk() -> None:
+
+    print('downloading & extracting bulk files...')
 
     for target in ['AllPrintings', 'Meta']:
 
@@ -217,8 +215,9 @@ def pull_bulk() -> None:
         fob.write_bytes(gzip.decompress(zip_data))
 
 
-@yaspin(text='comparing local and source builds...')
 def check_meta() -> bool:
+
+    print('comparing local and source builds...')
 
     if not BULK_PATH.exists() or not META_PATH.exists():
         return True
@@ -275,18 +274,27 @@ def load_states(states_path: Path) -> dict[str, bool]:
 
 def planar_bridge() -> None:
 
-    with yaspin(text='loading bulk data...'):
-        bulk: dict[str, dict] = json.loads(BULK_PATH.read_bytes())['data']
+    print('loading bulk data...')
+
+    bulk: dict[str, dict[str, Any]] = json.loads(BULK_PATH.read_bytes())
 
     states_path: Path = IMG_DIR / '.states.json'
 
     states_dict = load_states(states_path)
 
-    for set_obj in bulk.values():
+    for set_obj in bulk['data'].values():
 
-        set_obj = SetObject(set_obj)
+        while True:
 
-        if not set_obj.to_skip and not states_dict.get(set_obj.set_code):
+            set_obj = SetObject(set_obj)
+
+            if set_obj.to_skip:
+                break
+
+            print(set_obj.set_code, '------------------------------------')
+
+            if states_dict.get(set_obj.set_code):
+                break
 
             set_obj.pull_objs()
             states_dict.update({set_obj.set_code: set_obj.all_highres()})
@@ -295,6 +303,8 @@ def planar_bridge() -> None:
                 states_path.write_text(
                     json.dumps(states_dict, sort_keys=True), 'UTF-8'
                 )
+
+            break
 
 
 if __name__ == '__main__':

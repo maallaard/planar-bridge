@@ -44,14 +44,16 @@ Bridge progresses!
 As of now, Planar Bridge is only supported on Linux and MacOS, and is only
 confirmed to work with Python 3.10.
 
-It is recommended to use [pipenv](https://pipenv.pypa.io/) to install and
-update the packages that Planar Bridge requires in order to run.
-
-The required packages are:
+The packages required in order to run Planar Bridge are:
 
 - [requests](https://pypi.org/project/requests/)
 - [tomli](https://pypi.org/project/tomli/)
-- [yaspin](https://pypi.org/project/yaspin/)
+
+You can install both by running the following command:
+
+```sh
+pip install requests tomli
+```
 
 ## Usage
 
