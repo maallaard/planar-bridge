@@ -8,13 +8,13 @@
 <p align='center'>
   <a href="#planar-bridge"><b>Planar Bridge</b></a>
   <b>|</b>
-  <a href="#terms-of-use">Terms of Use</a>
-  <b>|</b>
   <a href="#installation">Installation</a>
   <b>|</b>
   <a href="#usage">Usage</a>
   <b>|</b>
   <a href="#configuration">Configuration</a>
+  <b>|</b>
+  <a href="#terms-of-use">Terms of Use</a>
   <b>|</b>
   <a href="#credits">Credits</a>
   <b>|</b>
@@ -76,7 +76,7 @@ $ git clone https://github.com/maallaard/planar-bridge.git
 To run Planar Bridge, execute `planar_bridge.py`.
 
 ```sh
-$ ./planar-bridge/planar-bridge.py
+$ python3 ./planar-bridge/planar-bridge.py
 ```
 
 Planar Bridge will then begin the download process. Keep in mind that with over
@@ -126,17 +126,21 @@ Planar Bridge names card images files according to that card's UUID from
 MTGJSON's database upon creation. At this time, there is no way to name a card
 file according to that card's name.
 
+Stored in `json/` are the bulk and meta json files containing card data used in
+downloading card scans. You can download these files manually on MTGJSON's
+[download page](https://mtgjson.com/downloads/all-files/).
+
 In every set code folder, there will be a file named `.states.json`. This JSON
 file contains the resolutions of all the card scans in that set according to
 their UUIDs. This file is also found in `imgs/`, which states for each set code
 whether or not every card in that set is at the highest resolution available.
-**DO NOT** delete these files. If you do, you will have to redownload images you
-already have.
+**DO NOT** delete these files. If you do, you will have to re-download images
+you already have downloaded.
 
-## Configuration
+### Configuration
 
 If you want to configure Planar Bridge, copy the default config file and place
-it in `~/.local/share/planar-bridge/`.
+it in Planar Bridge's local folder.
 
 Currently, the only configurations you can make to Planar Bridge are which
 sets, set types, and promo types to exclude from the download process. For more
@@ -166,12 +170,12 @@ blocked, either temporarily or permanently. Again, **DO NOT** modify the
 request rate of this program.
 
 With that being said, Planar Bridge and its developers accept absolutely zero
-responsibility regarding incidents that breach WotC's, Scryfall's, and Planar
-Bridge's terms and conditions. **USE AT YOUR OWN RISK!!!**
+responsibility regarding incidents that breach WotC's, Scryfall's, and/or
+Planar Bridge's terms and conditions. **USE AT YOUR OWN RISK!!!**
 
 ## Credits
 
-Logo based on design made by [Lorc](https://lorcblog.blogspot.com/).
+Logo based on 'Portal' design made by [Lorc](https://lorcblog.blogspot.com/).
 
 ## License
 
