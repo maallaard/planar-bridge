@@ -52,7 +52,7 @@ class PaperObject:  # pylint: disable=too-many-instance-attributes
         if promo_types is None:
             promo_types = []
 
-        promo_intrxn = set(CONFIG['exclude']['promos']) & set(promo_types)
+        promo_intrxn = set(CONFIG['xmt_promos']) & set(promo_types)
 
         self.bad_promo: bool = len(promo_intrxn) > 0
 
@@ -72,11 +72,7 @@ class PaperObject:  # pylint: disable=too-many-instance-attributes
 
         self.face: str = 'back' if is_back else 'front'
 
-        if self.is_token:
-            self.set_dir = set_dir / 'tokens'
-            self.set_dir.mkdir(exist_ok=True)
-        else:
-            self.set_dir = set_dir
+        self.set_dir = set_dir / 'tokens' if self.is_token else set_dir
 
         split_types = ['adventure', 'aftermath', 'flip', 'split']
 
@@ -99,9 +95,8 @@ class PaperObject:  # pylint: disable=too-many-instance-attributes
 
         img_json: dict[str, Any] = img.json()
 
-        if str(img_json['lang']) != 'en':
-            if bool(img_json['reprint']):
-                return None
+        if str(img_json['lang']) != 'en' and bool(img_json['reprint']):
+            return None
 
         return str(img_json['image_status']) == 'highres_scan'
 
@@ -118,6 +113,8 @@ class PaperObject:  # pylint: disable=too-many-instance-attributes
         return combined_ids
 
     def download(self) -> None:
+
+        self.set_dir.mkdir(exist_ok=True)
 
         time.sleep(0.1)
 
@@ -145,8 +142,8 @@ class SetObject:
         self.to_skip: bool = any((
             'isForeignOnly' in set_dict,
             bool(set_dict['isOnlineOnly']),
-            self.set_type in CONFIG['exclude']['types'],
-            self.set_code in CONFIG['exclude']['sets']
+            self.set_type in CONFIG['xmt_types'],
+            self.set_code in CONFIG['xmt_sets']
         ))
 
         self.obj_list: list[dict[str, Any]] = [
@@ -173,8 +170,6 @@ class SetObject:
         return all(self.load_states().values())
 
     def pull_objs(self) -> None:
-
-        self.set_dir.mkdir(exist_ok=True)
 
         states_dict = self.load_states()
 

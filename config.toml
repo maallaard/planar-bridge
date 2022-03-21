@@ -1,18 +1,16 @@
-[exclude]
-
-types = [
+xmt_types = [
     'funny',
     'memorabilia'
 ]
 
-sets = [
+xmt_sets = [
     'MB1',
     'PDRC',
     'PLIST',
     'PURL'
 ]
 
-promos = [
+xmt_promos = [
     'datestamped',
     'draftweekend',
     'gameday',
