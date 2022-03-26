@@ -5,26 +5,15 @@ from typing import Any
 import gzip
 import json
 import time
-import os
 
 import requests
 import tomli
 
 
-def os_local() -> str:
-
-    return '.local/share' if os.name == 'posix' else 'AppData/Local'
-
-
-LOCAL_DIR = (Path.home() / os_local() / 'planar-bridge').resolve()
 SOURCE_DIR = Path(__file__).resolve().parent
 
-JSON_DIR = LOCAL_DIR / 'json'
-IMG_DIR = LOCAL_DIR / 'imgs'
-
-LOCAL_DIR.mkdir(exist_ok=True, parents=True)
+JSON_DIR = SOURCE_DIR / 'json'
 JSON_DIR.mkdir(exist_ok=True)
-IMG_DIR.mkdir(exist_ok=True)
 
 BULK_PATH = JSON_DIR / 'AllPrintings.json'
 META_PATH = JSON_DIR / 'Meta.json'
@@ -32,15 +21,66 @@ META_PATH = JSON_DIR / 'Meta.json'
 
 def get_toml() -> dict[str, Any]:
 
-    config_local = LOCAL_DIR / 'config.toml'
-    config_source = SOURCE_DIR / 'config.toml'
+    config_default: dict[str, Any] = {
+        'imgs_dir': '',
+        'xmt_types': [
+            'funny',
+            'memorabilia'
+        ],
+        'xmt_sets': [
+            'MB1',
+            'PDRC',
+            'PLIST',
+            'PURL'
+        ],
+        'xmt_promos': [
+            'datestamped',
+            'draftweekend',
+            'gameday',
+            'intropack',
+            'jpwalker',
+            'mediainsert',
+            'planeswalkerstamped',
+            'playerrewards',
+            'premiereshop',
+            'prerelease',
+            'promopack',
+            'release',
+            'setpromo',
+            'stamped',
+            'themepack',
+            'tourney',
+            'wizardsplaynetwork'
+        ]
+    }
 
-    config = config_local if config_local.exists() else config_source
+    config_local = SOURCE_DIR / 'config.toml'
 
-    return tomli.loads(config.read_text('UTF-8'))
+    if config_local.exists():
+        config = tomli.loads(config_local.read_text('UTF-8'))
+    else:
+        config = config_default
+
+    return config
 
 
 CONFIG = get_toml()
+
+
+def get_imgs_dir() -> Path:
+
+    imgs_dir_conf: str = CONFIG['imgs_dir']
+
+    if imgs_dir_conf:
+        imgs_dir = Path(imgs_dir_conf)
+    else:
+        imgs_dir = SOURCE_DIR / 'imgs'
+        imgs_dir.mkdir(exist_ok=True)
+
+    return imgs_dir
+
+
+IMGS_DIR = get_imgs_dir()
 
 
 class PaperObject:  # pylint: disable=too-many-instance-attributes
@@ -151,7 +191,7 @@ class SetObject:
             *list(set_dict['tokens'])
         ]
 
-        self.set_dir = IMG_DIR / self.set_code
+        self.set_dir = IMGS_DIR / self.set_code
         self.states_path = self.set_dir / '.states.json'
 
     def load_states(self) -> dict[str, bool]:
@@ -252,7 +292,7 @@ def fetch_cardback(art: str = ...) -> None:
     else:
         raise Exception(f"Invalid cardback option: '{art}'")
 
-    back_path = IMG_DIR / 'cardback.jpg'
+    back_path = IMGS_DIR / 'cardback.jpg'
 
     if back_path.exists():
         return
@@ -276,7 +316,7 @@ def planar_bridge() -> None:
 
     bulk: dict[str, dict[str, Any]] = json.loads(BULK_PATH.read_bytes())
 
-    states_path: Path = IMG_DIR / '.states.json'
+    states_path: Path = IMGS_DIR / '.states.json'
 
     states_dict = load_states(states_path)
 

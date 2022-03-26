@@ -1,12 +1,12 @@
-<p align='center'>
+<p align="center">
   <img
     width=256px
-    src=https://user-images.githubusercontent.com/64651989/159095590-39a9c3ce-4a44-46b1-a597-515a3b282015.png
+    src="https://user-images.githubusercontent.com/64651989/159095590-39a9c3ce-4a44-46b1-a597-515a3b282015.png"
   />
 </p>
 
-<p align='center'>
-  <a href="#planar-bridge"><b>Planar Bridge</b></a>
+<p align="center">
+  <a href="#planar-bridge">Planar Bridge</a>
   <b>|</b>
   <a href="#installation">Installation</a>
   <b>|</b>
@@ -25,7 +25,7 @@
 
 # Planar Bridge
 
-Planar Bridge is a webscraping tool that builds and maintains locally stored
+Planar Bridge is a download tool that builds and maintains locally stored
 image databases containing high-quality cards scans from Magic the Gathering.
 
 All scans are obtained from [Scryfall](https://scryfall.com/) via their online
@@ -49,9 +49,9 @@ Bridge progresses!
 
 ## Installation
 
-Planar Bridge is supported on Linux, MacOS, and Windows. However, it is only
-confirmed to work with at least Python 3.10.0, so check your installed Python
-version if you are unsure:
+Planar Bridge is supported on Linux, MacOS, and is expected (not yet confirmed)
+to function on Windows. However, it is only confirmed to work with at least
+Python 3.10.0, so check your installed Python version if you are unsure:
 
 ```sh
 $ python3 -V
@@ -84,12 +84,14 @@ Planar Bridge will then begin the download process. Keep in mind that with over
 with the fastest internet connection. However, you can kill the program and
 start it later, and it will resume where it left off.
 
-If you are on Linux/MacOS, Planar Bridge will store files in $XDG_DATA_HOME
-(`~/.local/share/planar-bridge`). If you are on Windows, it will be in
-%LOCALAPPDATA% (`C:\Users\<username>\AppData\Local\planar-bridge`).
+By default, Planar Bridge will store all card scans and bulk files within this
+repo, and expects any config files to be here too. It will ignore these files
+and folders when syncing changes. However, you can specify a different
+directory to store card scans in, which is covered in the
+[Configuration](#configuration) section.
 
-Here is an example file tree layout of Planar Bridge's local folder inside
-your local data directory with fake UUIDs:
+Here is an example file tree layout of Planar Bridge's repo directory with
+example set codes and fake UUIDs:
 
 ```
 planar-bridge/
@@ -115,7 +117,11 @@ planar-bridge/
 ├─ json/
 │  ├─ AllPrintings.json
 │  └─ Meta.json
-└─ config.toml
+├─ .gitignore
+├─ LICENSE
+├─ Pipfile
+├─ planar_bridge.py
+└─ README.md
 ```
 
 Planar Bridge stores all card scans in `imgs/`, which you can symlink to a
@@ -139,12 +145,55 @@ you already have downloaded.
 
 ### Configuration
 
-If you want to configure Planar Bridge, copy the default config file and place
-it in Planar Bridge's local folder.
+If you want to configure Planar Bridge, copy the default config below and place
+it in Planar Bridge's repo under the filename `config.toml`.
 
-Currently, the only configurations you can make to Planar Bridge are which
-sets, set types, and promo types to exclude from the download process. For more
-information on set and promo types, visit [MTGJSON](https://mtgjson.com/).
+Configurations you can make to Planar Bridge are specifying a different `imgs/`
+path for card scans, and which sets, set types, and promo types to exclude from
+the download process. For more information on set and promo types, visit
+[MTGJSON](https://mtgjson.com/).
+
+Here is the configuration layout used by default.
+
+```toml
+# When empty, this will default to the path of this repo.
+img_dir = ''
+
+# Excludes unimplementable sets, like art series, un-sets, etc.
+xmt_types = [
+    'funny',
+    'memorabilia'
+]
+
+# Excludes sets that are purely made of reprints.
+xmt_sets = [
+    'MB1',
+    'PDRC',
+    'PLIST',
+    'PURL'
+]
+
+# Excludes stamped promos, unnecessary duplicates, and others.
+xmt_promos = [
+    'datestamped',
+    'draftweekend',
+    'gameday',
+    'intropack',
+    'jpwalker',
+    'mediainsert',
+    'planeswalkerstamped',
+    'playerrewards',
+    'premiereshop',
+    'prerelease',
+    'promopack',
+    'release',
+    'setpromo',
+    'stamped',
+    'themepack',
+    'tourney',
+    'wizardsplaynetwork'
+]
+```
 
 ## Terms of Use
 
