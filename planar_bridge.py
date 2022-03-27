@@ -57,7 +57,7 @@ def get_toml() -> dict[str, Any]:
     config_local = SOURCE_DIR / 'config.toml'
 
     if config_local.exists():
-        config = tomli.loads(config_local.read_text('UTF-8'))
+        config = tomli.loads(config_local.read_text(encoding='UTF-8'))
     else:
         config = config_default
 
@@ -114,14 +114,33 @@ class PaperObject:  # pylint: disable=too-many-instance-attributes
 
         self.set_dir = set_dir / 'tokens' if self.is_token else set_dir
 
+    def combined_ids(self) -> str:
+
+        if self.related is None:
+            return ''
+
+        combined_ids = self.related
+        combined_ids.append(self.uuid)
+        combined_ids.sort()
+        combined_ids = '_'.join(map(str, combined_ids))
+
+        return combined_ids
+
+    @property
+    def img_name(self) -> str:
+
         split_types = ['adventure', 'aftermath', 'flip', 'split']
 
         if self.layout in split_types and self.related:
-            self.img_name = self.combined_ids()
+            img_name = self.combined_ids()
         else:
-            self.img_name = self.uuid
+            img_name = self.uuid
 
-        self.img_path = self.set_dir / (self.img_name + '.jpg')
+        return img_name
+
+    @property
+    def img_path(self) -> Path:
+        return self.set_dir / (self.img_name + '.jpg')
 
     def img_res(self) -> bool | None:
 
@@ -139,18 +158,6 @@ class PaperObject:  # pylint: disable=too-many-instance-attributes
             return None
 
         return str(img_json['image_status']) == 'highres_scan'
-
-    def combined_ids(self) -> str:
-
-        if self.related is None:
-            return ''
-
-        combined_ids = self.related
-        combined_ids.append(self.uuid)
-        combined_ids.sort()
-        combined_ids = '_'.join(map(str, combined_ids))
-
-        return combined_ids
 
     def download(self) -> None:
 
@@ -236,7 +243,8 @@ class SetObject:
 
         if states_dict != self.load_states():
             self.states_path.write_text(
-                json.dumps(states_dict, sort_keys=True), 'UTF-8'
+                json.dumps(states_dict, sort_keys=True),
+                encoding='UTF-8'
             )
 
 
@@ -278,32 +286,28 @@ def check_meta() -> bool:
     return int(meta_local_date) < int(meta_source_date)
 
 
-def fetch_cardback(art: str = ...) -> None:
+def get_cardbacks() -> None:
 
-    if art == 'original' or art is ...:
-        uri = 'https://i.imgur.com/xiYusFq.jpg'
+    count = 0
 
-    elif art == 'custom':
-        uri = 'https://i.imgur.com/m8SkBeQ.jpg'
+    for img_hash in ('xiYusFq', 'm8SkBeQ', 'FLa7Gth'):
 
-    elif art == 'custom_minimal':
-        uri = 'https://i.imgur.com/FLa7Gth.jpg'
+        count += 1
 
-    else:
-        raise Exception(f"Invalid cardback option: '{art}'")
+        img_path: Path = IMGS_DIR / f'cardback-{count}.jpg'
 
-    back_path = IMGS_DIR / 'cardback.jpg'
+        if img_path.exists():
+            break
 
-    if back_path.exists():
-        return
+        uri = f'https://i.imgur.com/{img_hash}.jpg'
 
-    back_path.write_bytes(requests.get(uri).content)
+        img_path.write_bytes(requests.get(uri).content)
 
 
 def load_states(states_path: Path) -> dict[str, bool]:
 
     if not states_path.exists():
-        states_path.write_text(r'{}', 'UTF-8')
+        states_path.write_text(r'{}', encoding='UTF-8')
 
     set_states: dict[str, bool] = json.loads(states_path.read_bytes())
 
@@ -339,7 +343,8 @@ def planar_bridge() -> None:
 
             if states_dict != load_states(states_path):
                 states_path.write_text(
-                    json.dumps(states_dict, sort_keys=True), 'UTF-8'
+                    json.dumps(states_dict, sort_keys=True),
+                    encoding='UTF-8'
                 )
 
             break
@@ -349,5 +354,7 @@ if __name__ == '__main__':
 
     if check_meta():
         pull_bulk()
+
+    get_cardbacks()
 
     planar_bridge()
