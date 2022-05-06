@@ -94,45 +94,52 @@ class PaperObject:  # pylint: disable=too-many-instance-attributes
 
         promo_intrxn = set(CONFIG['xmt_promos']) & set(promo_types)
 
-        self.bad_promo: bool = len(promo_intrxn) > 0
+        self.bad_card: bool = any((
+            len(promo_intrxn) > 0,
+            bool(paper_dict.get('isFunny')),
+            bool(paper_dict.get('isOnlineOnly')),
+            'Checklist' in paper_dict['name'],
+            'Double-Faced' in paper_dict['name']
+        ))
+
+        self.set_code: str = paper_dict['setCode']
 
         self.uuid: str = paper_dict['uuid']
         self.scry_id: str = paper_dict['identifiers']['scryfallId']
         self.related: list[str] | None = paper_dict.get('otherFaceIds')
 
         self.layout: str = paper_dict['layout']
-        self.is_token: bool = self.layout == 'token'
 
-        self.set_code: str = paper_dict['setCode']
+        self.is_token: bool = self.layout in [
+            'token',
+            'double_faced_token'
+        ]
 
-        is_back = all((
-            self.layout in ['modal_dfc', 'transform'],
-            paper_dict.get('side') == 'b'
-        ))
+        self.is_dfc: bool = self.layout in [
+            'modal_dfc',
+            'transform',
+            'reversible_card'
+        ]
 
-        self.face: str = 'back' if is_back else 'front'
+        if self.is_dfc:
+            self.face = 'back' if paper_dict.get('side') == 'b' else 'front'
+        else:
+            self.face = None
 
         self.set_dir = set_dir / 'tokens' if self.is_token else set_dir
-
-    def combined_ids(self) -> str:
-
-        if self.related is None:
-            return ''
-
-        combined_ids = self.related
-        combined_ids.append(self.uuid)
-        combined_ids.sort()
-        combined_ids = '_'.join(map(str, combined_ids))
-
-        return combined_ids
 
     @property
     def img_name(self) -> str:
 
         split_types = ['adventure', 'aftermath', 'flip', 'split']
 
-        if self.layout in split_types and self.related:
-            img_name = self.combined_ids()
+        if self.layout in split_types and self.related is not None:
+            img_name = self.related
+            img_name.append(self.uuid)
+            img_name = list(dict.fromkeys(img_name))
+            img_name.sort()
+            img_name = ('_').join(map(str, img_name))
+
         else:
             img_name = self.uuid
 
@@ -157,7 +164,7 @@ class PaperObject:  # pylint: disable=too-many-instance-attributes
         if str(img_json['lang']) != 'en' and bool(img_json['reprint']):
             return None
 
-        return str(img_json['image_status']) == 'highres_scan'
+        return bool(img_json['highres_image'])
 
     def download(self) -> None:
 
@@ -167,8 +174,8 @@ class PaperObject:  # pylint: disable=too-many-instance-attributes
 
         uri = f'https://api.scryfall.com/cards/{self.scry_id}?format=image'
 
-        if not self.is_token:
-            uri = uri + '&face=' + self.face
+        if self.is_dfc and self.face is not None:
+            uri = f'{uri}&face={self.face}'
 
         img = requests.get(uri)
 
@@ -212,32 +219,38 @@ class SetObject:
 
         return states_dict
 
-    def all_highres(self) -> bool:
-
-        return all(self.load_states().values())
-
     def pull_objs(self) -> None:
 
         states_dict = self.load_states()
+
+        if all((
+            states_dict.values(),
+            self.set_code not in ['SLD', 'SLU'],
+            bool(states_dict)
+        )):
+            return
 
         for paper_obj in self.obj_list:
 
             paper_obj = PaperObject(paper_obj, self.set_dir)
 
-            if paper_obj.bad_promo:
-                break
+            if paper_obj.bad_card:
+                continue
 
             paper_state: bool | None = states_dict.get(paper_obj.img_name)
 
+            if paper_state is None:
+                paper_state = False
+
             if paper_state and paper_obj.img_path.exists():
-                break
+                continue
 
             img_res = paper_obj.img_res()
 
             if img_res is None:
-                break
+                continue
 
-            if img_res or not paper_obj.img_path.exists():
+            if img_res != paper_state or not paper_obj.img_path.exists():
                 paper_obj.download()
                 states_dict[paper_obj.img_name] = img_res
 
@@ -297,7 +310,7 @@ def get_cardbacks() -> None:
         img_path: Path = IMGS_DIR / f'cardback-{count}.jpg'
 
         if img_path.exists():
-            break
+            continue
 
         uri = f'https://i.imgur.com/{img_hash}.jpg'
 
@@ -318,36 +331,18 @@ def planar_bridge() -> None:
 
     print('loading bulk data...')
 
-    bulk: dict[str, dict[str, Any]] = json.loads(BULK_PATH.read_bytes())
-
-    states_path: Path = IMGS_DIR / '.states.json'
-
-    states_dict = load_states(states_path)
+    bulk: dict[str, Any] = json.loads(BULK_PATH.read_bytes())
 
     for set_obj in bulk['data'].values():
 
-        while True:
+        set_obj = SetObject(set_obj)
 
-            set_obj = SetObject(set_obj)
+        if set_obj.to_skip:
+            continue
 
-            if set_obj.to_skip:
-                break
+        print(set_obj.set_code, '------------------------------------')
 
-            print(set_obj.set_code, '------------------------------------')
-
-            if states_dict.get(set_obj.set_code):
-                break
-
-            set_obj.pull_objs()
-            states_dict.update({set_obj.set_code: set_obj.all_highres()})
-
-            if states_dict != load_states(states_path):
-                states_path.write_text(
-                    json.dumps(states_dict, sort_keys=True),
-                    encoding='UTF-8'
-                )
-
-            break
+        set_obj.pull_objs()
 
 
 if __name__ == '__main__':

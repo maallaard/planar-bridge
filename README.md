@@ -93,7 +93,7 @@ directory to store card scans in, which is covered in the
 Here is an example file tree layout of Planar Bridge's repo directory with
 example set codes and fake UUIDs:
 
-```
+```txt
 planar-bridge/
 ├─ imgs/
 │  ├─ LEA/
@@ -103,13 +103,13 @@ planar-bridge/
 │  │  │  └─ ...
 │  │  ├─ 01234567-89ab-cdef-fedc-ba9876543210.jpg
 │  │  ├─ fedcba98-7654-3210-0123-456789abcdef.jpg
-│  │  ├─ .states.json
-│  │  └─ ...
+│  │  ├─ ...
+│  │  └─ .states.json
 │  ├─ LEB/
 │  │  ├─ 1f2e3d4c-5b6a-7089-9807-a6b5-c4d3e2f1.jpg
 │  │  ├─ 9807a6b5-c4d3-e2f1-1f2e-3d4c-5b6a7089.jpg
-│  │  ├─ .states.json
-│  │  └─ ...
+│  │  ├─ ...
+│  │  └─ .states.json
 │  ├─ 2ED/
 │  │  └─ ...
 │  ├─ ...
@@ -153,10 +153,15 @@ path for card scans, and which sets, set types, and promo types to exclude from
 the download process. For more information on set and promo types, visit
 [MTGJSON](https://mtgjson.com/).
 
+For now, the configuration of Planar Bridge is limited, so if you have a
+suggestion for more options to configure, feel free to
+[open an issue](https://github.com/maallaard/planar-bridge/issues/new).
+
 Here is the configuration layout used by default.
 
 ```toml
 # When empty, this will default to the path of this repo.
+# You must provide the full path of the target directory if given.
 img_dir = ''
 
 # Excludes unimplementable sets, like art series, un-sets, etc.
