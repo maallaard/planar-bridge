@@ -61,15 +61,21 @@ Python 3.10.0
 (note that lines in code blocks beginning with `$` means this line is used as
 a user-executed command)
 
-To install Planar Bridge, start by installing the
-[requests](https://pypi.org/project/requests/) and
-[tomli](https://pypi.org/project/tomli/) packages using pip, and then clone
-this repository. This can be done in two commands:
+To install Planar Bridge, start by cloning this repository.
+
+```sh
+$ git clone --depth=1 https://github.com/maallaard/planar-bridge.git
+```
+
+Then, install the [requests](https://pypi.org/project/requests/) and
+[tomli](https://pypi.org/project/tomli/) packages using pip.
 
 ```sh
 $ python3 -m pip install requests tomli
-$ git clone https://github.com/maallaard/planar-bridge.git
 ```
+
+Alternatively, you can use [pipenv](https://github.com/pypa/pipenv/) to setup a
+virtual environment within your cloned repo using the included `Pipfile`.
 
 ## Usage
 
@@ -113,7 +119,6 @@ planar-bridge/
 │  ├─ 2ED/
 │  │  └─ ...
 │  ├─ ...
-│  └─ .states.json
 ├─ json/
 │  ├─ AllPrintings.json
 │  └─ Meta.json
@@ -155,7 +160,7 @@ the download process. For more information on set and promo types, visit
 
 For now, the configuration of Planar Bridge is limited, so if you have a
 suggestion for more options to configure, feel free to
-[open an issue](https://github.com/maallaard/planar-bridge/issues/new).
+[open an issue](https://github.com/maallaard/planar-bridge/issues/new/).
 
 Here is the configuration layout used by default.
 
@@ -203,8 +208,8 @@ xmt_promos = [
 ## Terms of Use
 
 By downloading and running this program, you agree to Wizards of the Coast's
-[Fan Content Policy](https://company.wizards.com/en/legal/fancontentpolicy) as
-well as Scryfall's [Terms of Service](https://scryfall.com/docs/terms).
+[Fan Content Policy](https://company.wizards.com/en/legal/fancontentpolicy/) as
+well as Scryfall's [Terms of Service](https://scryfall.com/docs/terms/).
 If you have any questions about what you can/cannot do regarding these
 policies, carefully read each article and FAQs on the links to WotC's and
 Scryfall's terms and conditions.
@@ -215,8 +220,8 @@ millisecond request rate limit that Scryfall enforces on their website:
 > We kindly ask that you insert 50 – 100 milliseconds of delay between the
 > requests you send to the server at api.scryfall.com. (i.e., 10 requests per
 > second on average).
-
-(from [Scryfall's API homepage](https://scryfall.com/docs/api))
+>
+> \- [Scryfall's API homepage](https://scryfall.com/docs/api/)
 
 **DO NOT** modify or remove this program's built-in timer that regulates the
 request rate of itself. If you remove it, your IP address will likely get

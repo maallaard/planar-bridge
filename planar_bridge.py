@@ -1,10 +1,10 @@
 #!/usr/bin/env python3.10
 
+from gzip import decompress
 from pathlib import Path
 from typing import Any
-import gzip
+from time import sleep
 import json
-import time
 
 import requests
 import tomli
@@ -54,14 +54,14 @@ def get_toml() -> dict[str, Any]:
         ]
     }
 
-    config_local = SOURCE_DIR / 'config.toml'
+    config_path = SOURCE_DIR / 'config.toml'
 
-    if config_local.exists():
-        config = tomli.loads(config_local.read_text(encoding='UTF-8'))
+    if config_path.exists():
+        config_defined = tomli.loads(config_path.read_text(encoding='UTF-8'))
     else:
-        config = config_default
+        config_defined = {}
 
-    return config
+    return config_default | config_defined
 
 
 CONFIG = get_toml()
@@ -69,13 +69,12 @@ CONFIG = get_toml()
 
 def get_imgs_dir() -> Path:
 
-    imgs_dir_conf: str = CONFIG['imgs_dir']
+    imgs_dir_cfg: str = CONFIG['imgs_dir']
 
-    if imgs_dir_conf:
-        imgs_dir = Path(imgs_dir_conf)
+    if bool(imgs_dir_cfg):
+        imgs_dir = Path(imgs_dir_cfg)
     else:
         imgs_dir = SOURCE_DIR / 'imgs'
-        imgs_dir.mkdir(exist_ok=True)
 
     return imgs_dir
 
@@ -83,9 +82,15 @@ def get_imgs_dir() -> Path:
 IMGS_DIR = get_imgs_dir()
 
 
-class PaperObject:  # pylint: disable=too-many-instance-attributes
+class PaperObject:
 
     def __init__(self, paper_dict: dict[str, Any], set_dir: Path) -> None:
+
+        uuid: str = paper_dict['uuid']
+        set_code: str = paper_dict['setCode']
+
+        self.message: str = f'{set_code} {uuid}'
+        self.scry_id: str = paper_dict['identifiers']['scryfallId']
 
         promo_types: list[str] | None = paper_dict.get('promoTypes')
 
@@ -94,119 +99,109 @@ class PaperObject:  # pylint: disable=too-many-instance-attributes
 
         promo_intrxn = set(CONFIG['xmt_promos']) & set(promo_types)
 
-        self.bad_card: bool = any((
-            len(promo_intrxn) > 0,
-            bool(paper_dict.get('isFunny')),
+        bad_name = False
+
+        for subst_name in ['Checklist', 'Double-Faced']:
+            if subst_name in str(paper_dict['name']):
+                bad_name = True
+
+        self.bad_card = any((
             bool(paper_dict.get('isOnlineOnly')),
-            'Checklist' in paper_dict['name'],
-            'Double-Faced' in paper_dict['name']
+            bool(paper_dict.get('isFunny')),
+            len(promo_intrxn) > 0,
+            bad_name
         ))
 
-        self.set_code: str = paper_dict['setCode']
+        layout: str = paper_dict['layout']
+        related: list[str] | None = paper_dict.get('otherFaceIds')
 
-        self.uuid: str = paper_dict['uuid']
-        self.scry_id: str = paper_dict['identifiers']['scryfallId']
-        self.related: list[str] | None = paper_dict.get('otherFaceIds')
-
-        self.layout: str = paper_dict['layout']
-
-        self.is_token: bool = self.layout in [
-            'token',
-            'double_faced_token'
-        ]
-
-        self.is_dfc: bool = self.layout in [
-            'modal_dfc',
-            'transform',
-            'reversible_card'
-        ]
-
-        if self.is_dfc:
+        if layout in ['reversible_card', 'modal_dfc', 'transform']:
             self.face = 'back' if paper_dict.get('side') == 'b' else 'front'
         else:
             self.face = None
 
-        self.set_dir = set_dir / 'tokens' if self.is_token else set_dir
+        to_combine = all((
+            layout in ['adventure', 'aftermath', 'split', 'flip'],
+            related is not None
+        ))
 
-    @property
-    def img_name(self) -> str:
-
-        split_types = ['adventure', 'aftermath', 'flip', 'split']
-
-        if self.layout in split_types and self.related is not None:
-            img_name = self.related
-            img_name.append(self.uuid)
+        if to_combine:
+            img_name = related
+            img_name.append(uuid)
             img_name = list(dict.fromkeys(img_name))
             img_name.sort()
             img_name = ('_').join(map(str, img_name))
-
         else:
-            img_name = self.uuid
+            img_name = uuid
 
-        return img_name
+        self.img_name: str = img_name
 
-    @property
-    def img_path(self) -> Path:
-        return self.set_dir / (self.img_name + '.jpg')
+        if layout in ['token', 'double_faced_token']:
+            set_dir = set_dir / 'tokens'
 
-    def img_res(self) -> bool | None:
+        self.img_path: Path = set_dir / (self.img_name + '.jpg')
 
-        time.sleep(0.1)
+    def resolve(self) -> bool | None:
+
+        sleep(0.1)
 
         uri = f'https://api.scryfall.com/cards/{self.scry_id}?format=json'
         img = requests.get(uri)
 
         if img.status_code != 200:
-            raise Exception(f"HTTP request gave {img.status_code} for {uri}")
+            raise Exception(f"HTTP {img.status_code} for {uri}")
 
         img_json: dict[str, Any] = img.json()
 
-        if str(img_json['lang']) != 'en' and bool(img_json['reprint']):
+        foreign_reprint = all((
+            str(img_json['lang']) != 'en',
+            bool(img_json['reprint'])
+        ))
+
+        if foreign_reprint:
             return None
 
         return bool(img_json['highres_image'])
 
     def download(self) -> None:
 
-        self.set_dir.mkdir(exist_ok=True)
+        self.img_path.parent.mkdir(exist_ok=True, parents=True)
 
-        time.sleep(0.1)
+        sleep(0.1)
 
         uri = f'https://api.scryfall.com/cards/{self.scry_id}?format=image'
 
-        if self.is_dfc and self.face is not None:
+        if self.face is not None:
             uri = f'{uri}&face={self.face}'
 
         img = requests.get(uri)
 
         if img.status_code != 200:
-            raise Exception(f"HTTP request gave {img.status_code} for {uri}")
+            raise Exception(f"HTTP {img.status_code} for {uri}")
 
         self.img_path.write_bytes(img.content)
-        print(self.set_code, self.uuid)
+        print(self.message)
 
 
 class SetObject:
 
     def __init__(self, set_dict: dict[str, Any]) -> None:
 
-        self.set_type: str = set_dict['type']
         self.set_code: str = set_dict['code']
+        self.set_dir = IMGS_DIR / self.set_code
+        self.states_path = self.set_dir / '.states.json'
 
-        self.to_skip: bool = any((
-            'isForeignOnly' in set_dict,
-            bool(set_dict['isOnlineOnly']),
-            self.set_type in CONFIG['xmt_types'],
-            self.set_code in CONFIG['xmt_sets']
+        self.to_skip = any((
+            bool(set_dict.get('isOnlineOnly')),
+            bool(set_dict.get('isForeignOnly')),
+            bool(self.set_code in CONFIG['xmt_sets']),
+            bool(str(set_dict['type']) in CONFIG['xmt_types']),
         ))
 
         self.obj_list: list[dict[str, Any]] = [
             *list(set_dict['cards']),
             *list(set_dict['tokens'])
         ]
-
-        self.set_dir = IMGS_DIR / self.set_code
-        self.states_path = self.set_dir / '.states.json'
 
     def load_states(self) -> dict[str, bool]:
 
@@ -223,11 +218,13 @@ class SetObject:
 
         states_dict = self.load_states()
 
-        if all((
-            states_dict.values(),
+        skip_over = all((
+            *states_dict.values(),
             self.set_code not in ['SLD', 'SLU'],
             bool(states_dict)
-        )):
+        ))
+
+        if skip_over:
             return
 
         for paper_obj in self.obj_list:
@@ -245,12 +242,17 @@ class SetObject:
             if paper_state and paper_obj.img_path.exists():
                 continue
 
-            img_res = paper_obj.img_res()
+            img_res = paper_obj.resolve()
 
             if img_res is None:
                 continue
 
-            if img_res != paper_state or not paper_obj.img_path.exists():
+            to_download = any((
+                not paper_obj.img_path.exists(),
+                img_res != paper_state
+            ))
+
+            if to_download:
                 paper_obj.download()
                 states_dict[paper_obj.img_name] = img_res
 
@@ -259,19 +261,6 @@ class SetObject:
                 json.dumps(states_dict, sort_keys=True),
                 encoding='UTF-8'
             )
-
-
-def pull_bulk() -> None:
-
-    print('downloading & extracting bulk files...')
-
-    for target in ['AllPrintings', 'Meta']:
-
-        fob = JSON_DIR / f'{target}.json'
-        zip_data = f'https://mtgjson.com/api/v5/{target}.json.gz'
-
-        zip_data = requests.get(zip_data).content
-        fob.write_bytes(gzip.decompress(zip_data))
 
 
 def check_meta() -> bool:
@@ -299,7 +288,23 @@ def check_meta() -> bool:
     return int(meta_local_date) < int(meta_source_date)
 
 
+def pull_bulk() -> None:
+
+    print('downloading & extracting bulk files...')
+
+    for target in ['AllPrintings', 'Meta']:
+
+        fob = JSON_DIR / f'{target}.json'
+        zip_data = f'https://mtgjson.com/api/v5/{target}.json.gz'
+
+        zip_data = requests.get(zip_data).content
+        fob.write_bytes(decompress(zip_data))
+
+
 def get_cardbacks() -> None:
+
+    cardback_dir = IMGS_DIR / '.cardbacks'
+    cardback_dir.mkdir(exist_ok=True)
 
     count = 0
 
@@ -307,7 +312,7 @@ def get_cardbacks() -> None:
 
         count += 1
 
-        img_path: Path = IMGS_DIR / f'cardback-{count}.jpg'
+        img_path: Path = cardback_dir / f'cardback-{count}.jpg'
 
         if img_path.exists():
             continue
@@ -315,16 +320,6 @@ def get_cardbacks() -> None:
         uri = f'https://i.imgur.com/{img_hash}.jpg'
 
         img_path.write_bytes(requests.get(uri).content)
-
-
-def load_states(states_path: Path) -> dict[str, bool]:
-
-    if not states_path.exists():
-        states_path.write_text(r'{}', encoding='UTF-8')
-
-    set_states: dict[str, bool] = json.loads(states_path.read_bytes())
-
-    return set_states
 
 
 def planar_bridge() -> None:
