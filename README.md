@@ -26,7 +26,7 @@
 # Planar Bridge
 
 Planar Bridge is a download tool that builds and maintains locally stored
-image databases containing high-quality cards scans from Magic the Gathering.
+image databases containing high-quality card scans from Magic the Gathering.
 
 All scans are obtained from [Scryfall](https://scryfall.com/) via their online
 card database. Bulk datasets used to build the image databases locally are
@@ -41,7 +41,7 @@ part of a spoiled set and have not been scanned at a crisp high resolution yet.
 Planar Bridge is currently in pre-alpha, so everything you see now is subject
 to change at any point.
 
-This README file is incomplete at this point, and will be improved upon as more
+This README file is incomplete at this point and will be improved upon as more
 commits are made.
 
 Please save and share this project if you want to contribute or see how Planar
@@ -49,7 +49,7 @@ Bridge progresses!
 
 ## Installation
 
-Planar Bridge is supported on Linux, MacOS, and is expected (not yet confirmed)
+Planar Bridge is supported on Linux and macOS. It is expected (not yet tested)
 to function on Windows. However, it is only confirmed to work with at least
 Python 3.10.0, so check your installed Python version if you are unsure:
 
@@ -58,7 +58,7 @@ $ python3 -V
 Python 3.10.0
 ```
 
-(note that lines in code blocks beginning with `$` means this line is used as
+(note that lines in code blocks beginning with `$` mean this line is used as
 a user-executed command)
 
 To install Planar Bridge, start by cloning this repository.
@@ -74,8 +74,8 @@ Then, install the [requests](https://pypi.org/project/requests/) and
 $ python3 -m pip install requests tomli
 ```
 
-Alternatively, you can use [pipenv](https://github.com/pypa/pipenv/) to setup a
-virtual environment within your cloned repo using the included `Pipfile`.
+Alternatively, you can use [pipenv](https://github.com/pypa/pipenv/) to set
+up a virtual environment within your cloned repo using the included `Pipfile`.
 
 ## Usage
 
@@ -86,18 +86,18 @@ $ python3 ./planar-bridge/planar-bridge.py
 ```
 
 Planar Bridge will then begin the download process. Keep in mind that with over
-600 catagorized sets, downloading all card scans will take several hours even
+600 categorized sets, downloading all card scans will take several hours even
 with the fastest internet connection. However, you can kill the program and
 start it later, and it will resume where it left off.
 
 By default, Planar Bridge will store all card scans and bulk files within this
-repo, and expects any config files to be here too. It will ignore these files
+repo and expects any config files to be here too. It will ignore these files
 and folders when syncing changes. However, you can specify a different
 directory to store card scans in, which is covered in the
 [Configuration](#configuration) section.
 
 Here is an example file tree layout of Planar Bridge's repo directory with
-example set codes and fake UUIDs:
+some example set codes and fake UUIDs:
 
 ```txt
 planar-bridge/
@@ -130,14 +130,14 @@ planar-bridge/
 ```
 
 Planar Bridge stores all card scans in `imgs/`, which you can symlink to a
-different directory if you want. Each card is catagorized by set code, with
+different directory if you want. Each card is categorized by set code, with
 tokens being stored in the `tokens/` subfolder of the set it belongs to.
 
-Planar Bridge names card images files according to that card's UUID from
+Planar Bridge names card image files according to that card's UUID from
 MTGJSON's database upon creation. At this time, there is no way to name a card
 file according to that card's name.
 
-Stored in `json/` are the bulk and meta json files containing card data used in
+Stored in `json/` are the bulk and meta JSON files containing card data used in
 downloading card scans. You can download these files manually on MTGJSON's
 [download page](https://mtgjson.com/downloads/all-files/).
 
@@ -148,14 +148,14 @@ whether or not every card in that set is at the highest resolution available.
 **DO NOT** delete these files. If you do, you will have to re-download images
 you already have downloaded.
 
-### Configuration
+## Configuration
 
 If you want to configure Planar Bridge, copy the default config below and place
 it in Planar Bridge's repo under the filename `config.toml`.
 
-Configurations you can make to Planar Bridge are specifying a different `imgs/`
-path for card scans, and which sets, set types, and promo types to exclude from
-the download process. For more information on set and promo types, visit
+Configurations you can make to Planar Bridge are specifying different `imgs/`
+paths for card scans, and which sets, set types, and promo types to exclude
+from the download process. For more information on set and promo types, visit
 [MTGJSON](https://mtgjson.com/).
 
 For now, the configuration of Planar Bridge is limited, so if you have a
@@ -167,15 +167,16 @@ Here is the configuration layout used by default.
 ```toml
 # When empty, this will default to the path of this repo.
 # You must provide the full path of the target directory if given.
+# Symlinks and external devices are accepted.
 img_dir = ''
 
-# Excludes unimplementable sets, like art series, un-sets, etc.
+# Excludes unimplementable sets: art sets, un-sets, online-only, etc.
 xmt_types = [
     'funny',
     'memorabilia'
 ]
 
-# Excludes sets that are purely made of reprints.
+# Excludes sets that purely comprise of reprints.
 xmt_sets = [
     'MB1',
     'PDRC',
@@ -224,11 +225,11 @@ millisecond request rate limit that Scryfall enforces on their website:
 > \- [Scryfall's API homepage](https://scryfall.com/docs/api/)
 
 **DO NOT** modify or remove this program's built-in timer that regulates the
-request rate of itself. If you remove it, your IP address will likely get
+request rate itself. If you remove it, your IP address will likely get
 blocked, either temporarily or permanently. Again, **DO NOT** modify the
 request rate of this program.
 
-With that being said, Planar Bridge and its developers accept absolutely zero
+With that being said, Planar Bridge and its developers accept zero
 responsibility regarding incidents that breach WotC's, Scryfall's, and/or
 Planar Bridge's terms and conditions. **USE AT YOUR OWN RISK!!!**
 

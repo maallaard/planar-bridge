@@ -1,14 +1,18 @@
 #!/usr/bin/env python3.10
 
-from gzip import decompress
+from distutils.util import strtobool
 from pathlib import Path
 from typing import Any
-from time import sleep
+import gzip
 import json
+import time
+import sys
 
 import requests
 import tomli
 
+
+MTGJSON_VERS: str = '5.2.0'
 
 SOURCE_DIR = Path(__file__).resolve().parent
 
@@ -108,8 +112,7 @@ class PaperObject:
         self.bad_card = any((
             bool(paper_dict.get('isOnlineOnly')),
             bool(paper_dict.get('isFunny')),
-            len(promo_intrxn) > 0,
-            bad_name
+            len(promo_intrxn) > 0, bad_name
         ))
 
         layout: str = paper_dict['layout']
@@ -143,13 +146,12 @@ class PaperObject:
 
     def resolve(self) -> bool | None:
 
-        sleep(0.1)
+        time.sleep(0.1)
 
         uri = f'https://api.scryfall.com/cards/{self.scry_id}?format=json'
-        img = requests.get(uri)
 
-        if img.status_code != 200:
-            raise Exception(f"HTTP {img.status_code} for {uri}")
+        img = requests.get(uri)
+        img.raise_for_status()
 
         img_json: dict[str, Any] = img.json()
 
@@ -167,7 +169,7 @@ class PaperObject:
 
         self.img_path.parent.mkdir(exist_ok=True, parents=True)
 
-        sleep(0.1)
+        time.sleep(0.1)
 
         uri = f'https://api.scryfall.com/cards/{self.scry_id}?format=image'
 
@@ -175,9 +177,7 @@ class PaperObject:
             uri = f'{uri}&face={self.face}'
 
         img = requests.get(uri)
-
-        if img.status_code != 200:
-            raise Exception(f"HTTP {img.status_code} for {uri}")
+        img.raise_for_status()
 
         self.img_path.write_bytes(img.content)
         print(self.message)
@@ -263,6 +263,19 @@ class SetObject:
             )
 
 
+def to_proceed(vers: str) -> None:
+    print(f'Warning: MTGJSON has been updated to v{vers}')
+    print(f'Planar Bridge is only expected to work with v{MTGJSON_VERS}')
+    print('Make sure there are no conflicts before proceeding')
+    print('MTGJSON changelong: https://mtgjson.com/changelog/mtgjson-v5/')
+
+    proceed = input('Do you want to proceed? [y/N]: ')
+    proceed = bool(strtobool(proceed)) if proceed != '' else False
+
+    if proceed:
+        sys.exit()
+
+
 def check_meta() -> bool:
 
     print('comparing local and source builds...')
@@ -270,35 +283,40 @@ def check_meta() -> bool:
     if not BULK_PATH.exists() or not META_PATH.exists():
         return True
 
-    uri = requests.get('https://mtgjson.com/api/v5/Meta.json')
-    if uri.status_code != 200:
-        raise Exception(f"HTTP request gave {uri.status_code} for {uri.url}")
+    uri = 'https://mtgjson.com/api/v5/Meta.json'
 
-    meta_source = str(uri.json()['meta']['version'])
+    rqst = requests.get(uri)
+    rqst.raise_for_status()
+
+    meta_source = str(rqst.json()['meta']['version'])
 
     meta_local = json.loads(META_PATH.read_bytes())
     meta_local = str(meta_local['meta']['version'])
 
-    meta_source_vers, meta_source_date = meta_source.split('+')
-    meta_local_vers, meta_local_date = meta_local.split('+')
+    version, source_date = meta_source.split('+')
+    local_date = meta_local.split('+')[1]
 
-    if meta_local_vers != meta_source_vers:
-        raise Exception("MTGJSON version has changed")
+    if version != MTGJSON_VERS:
+        to_proceed(version)
 
-    return int(meta_local_date) < int(meta_source_date)
+    up_to_date: bool = int(local_date) < int(source_date)
+
+    return up_to_date
 
 
 def pull_bulk() -> None:
 
     print('downloading & extracting bulk files...')
 
-    for target in ['AllPrintings', 'Meta']:
+    for target in ('AllPrintings', 'Meta'):
 
         fob = JSON_DIR / f'{target}.json'
         zip_data = f'https://mtgjson.com/api/v5/{target}.json.gz'
 
-        zip_data = requests.get(zip_data).content
-        fob.write_bytes(decompress(zip_data))
+        zip_data = requests.get(zip_data)
+        zip_data.raise_for_status()
+
+        fob.write_bytes(gzip.decompress(zip_data.content))
 
 
 def get_cardbacks() -> None:
@@ -319,7 +337,10 @@ def get_cardbacks() -> None:
 
         uri = f'https://i.imgur.com/{img_hash}.jpg'
 
-        img_path.write_bytes(requests.get(uri).content)
+        img = requests.get(uri)
+        img.raise_for_status()
+
+        img_path.write_bytes(img.content)
 
 
 def planar_bridge() -> None:
