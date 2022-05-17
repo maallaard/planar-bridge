@@ -25,8 +25,8 @@
 
 # Planar Bridge
 
-Planar Bridge is a download tool that builds and maintains locally stored
-image databases containing high-quality card scans from Magic the Gathering.
+Planar Bridge is a cross-platform tool for downloading and maintaining locally
+stored high-quality card scans from Magic: the Gathering.
 
 All scans are obtained from [Scryfall](https://scryfall.com/) via their online
 card database. Bulk datasets used to build the image databases locally are
@@ -239,5 +239,5 @@ Logo based on 'Portal' design made by [Lorc](https://lorcblog.blogspot.com/).
 
 ## License
 
-This project is developed under an MIT License. For more information,
-see [LICENSE](https://github.com/maallaard/planar-bridge/blob/main/LICENSE).
+This project is developed under an MIT License. For more information, see
+[LICENSE](https://github.com/maallaard/planar-bridge/blob/main/LICENSE.txt).
