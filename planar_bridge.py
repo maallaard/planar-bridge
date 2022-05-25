@@ -1,6 +1,5 @@
 #!/usr/bin/env python3.10
 
-from distutils.util import strtobool
 from pathlib import Path
 from typing import Any
 import gzip
@@ -104,7 +103,6 @@ class PaperObject:
         promo_intrxn = set(CONFIG['xmt_promos']) & set(promo_types)
 
         bad_name = False
-
         for subst_name in ['Checklist', 'Double-Faced']:
             if subst_name in str(paper_dict['name']):
                 bad_name = True
@@ -155,15 +153,22 @@ class PaperObject:
 
         img_json: dict[str, Any] = img.json()
 
+        img_status = str(img_json['image_status'])
+
+        does_not_exist = any((
+            img_status == 'placeholder',
+            img_status == 'missing'
+        ))
+
         foreign_reprint = all((
             str(img_json['lang']) != 'en',
             bool(img_json['reprint'])
         ))
 
-        if foreign_reprint:
+        if foreign_reprint or does_not_exist:
             return None
 
-        return bool(img_json['highres_image'])
+        return bool(img_status == 'highres_scan')
 
     def download(self) -> None:
 
@@ -263,16 +268,30 @@ class SetObject:
             )
 
 
+def yes_no_bool(ans: str) -> bool | None:
+
+    ans = ans.strip().lower()
+
+    if ans in ['y', 'yes', 't', 'true', '1']:
+        return True
+
+    if ans in ['n', 'no', 'f', 'false', '0']:
+        return False
+
+    return None
+
+
 def to_proceed(vers: str) -> None:
+
     print(f'Warning: MTGJSON has been updated to v{vers}')
     print(f'Planar Bridge is only expected to work with v{MTGJSON_VERS}')
     print('Make sure there are no conflicts before proceeding')
     print('MTGJSON changelong: https://mtgjson.com/changelog/mtgjson-v5/')
 
     proceed = input('Do you want to proceed? [y/N]: ')
-    proceed = bool(strtobool(proceed)) if proceed != '' else False
+    proceed = yes_no_bool(proceed) if proceed != '' else False
 
-    if proceed:
+    if not proceed:
         sys.exit()
 
 
