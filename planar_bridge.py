@@ -11,6 +11,9 @@ import requests
 import tomli
 
 
+# BUG: Planar Bridge doesn't work with IPv6 yet.
+requests.packages.urllib3.util.connection.HAS_IPV6 = False
+
 MTGJSON_VERS: str = '5.2.0'
 
 SOURCE_DIR = Path(__file__).resolve().parent
@@ -85,6 +88,10 @@ def get_imgs_dir() -> Path:
 IMGS_DIR = get_imgs_dir()
 
 
+def timestamp() -> str:
+    return '[' + time.strftime('%H:%M:%S') + ']'
+
+
 class PaperObject:
 
     def __init__(self, paper_dict: dict[str, Any], set_dir: Path) -> None:
@@ -92,7 +99,7 @@ class PaperObject:
         uuid: str = paper_dict['uuid']
         set_code: str = paper_dict['setCode']
 
-        self.message: str = f'{set_code} {uuid}'
+        self.message: str = set_code + ' | ' + uuid
         self.scry_id: str = paper_dict['identifiers']['scryfallId']
 
         promo_types: list[str] | None = paper_dict.get('promoTypes')
@@ -155,10 +162,7 @@ class PaperObject:
 
         img_status = str(img_json['image_status'])
 
-        does_not_exist = any((
-            img_status == 'placeholder',
-            img_status == 'missing'
-        ))
+        does_not_exist = img_status in ['placeholder', 'missing']
 
         foreign_reprint = all((
             str(img_json['lang']) != 'en',
@@ -179,13 +183,13 @@ class PaperObject:
         uri = f'https://api.scryfall.com/cards/{self.scry_id}?format=image'
 
         if self.face is not None:
-            uri = f'{uri}&face={self.face}'
+            uri = uri + '&face=' + self.face
 
         img = requests.get(uri)
         img.raise_for_status()
 
         self.img_path.write_bytes(img.content)
-        print(self.message)
+        print(timestamp(), self.message)
 
 
 class SetObject:
@@ -249,17 +253,16 @@ class SetObject:
 
             img_res = paper_obj.resolve()
 
-            if img_res is None:
+            if img_res == paper_state or img_res is None:
                 continue
 
-            to_download = any((
-                not paper_obj.img_path.exists(),
-                img_res != paper_state
-            ))
+            if not paper_obj.img_path.exists():
+                paper_obj.message = 'GRAB: ' + paper_obj.message
+            elif img_res != paper_state:
+                paper_obj.message = 'NEWR: ' + paper_obj.message
 
-            if to_download:
-                paper_obj.download()
-                states_dict[paper_obj.img_name] = img_res
+            paper_obj.download()
+            states_dict[paper_obj.img_name] = img_res
 
         if states_dict != self.load_states():
             self.states_path.write_text(
@@ -268,36 +271,27 @@ class SetObject:
             )
 
 
-def yes_no_bool(ans: str) -> bool | None:
-
-    ans = ans.strip().lower()
-
-    if ans in ['y', 'yes', 't', 'true', '1']:
-        return True
-
-    if ans in ['n', 'no', 'f', 'false', '0']:
-        return False
-
-    return None
-
-
 def to_proceed(vers: str) -> None:
 
-    print(f'Warning: MTGJSON has been updated to v{vers}')
-    print(f'Planar Bridge is only expected to work with v{MTGJSON_VERS}')
-    print('Make sure there are no conflicts before proceeding')
-    print('MTGJSON changelong: https://mtgjson.com/changelog/mtgjson-v5/')
+    print('WARN: MTGJSON has been updated to v' + vers)
+    print('WARN: Planar Bridge is only expected to work with v' + MTGJSON_VERS)
+    print('WARN: Make sure there are no conflicts before proceeding')
+    print('WARN: MTGJSON changelog: https://mtgjson.com/changelog/mtgjson-v5/')
 
-    proceed = input('Do you want to proceed? [y/N]: ')
-    proceed = yes_no_bool(proceed) if proceed != '' else False
+    proceed = input('WARN: Do you want to proceed? [y/N]: ').strip().lower()
 
-    if not proceed:
-        sys.exit()
+    if proceed == 'y':
+        return
+
+    if proceed not in ['n', '']:
+        print('Invalid input. Exiting...')
+
+    sys.exit()
 
 
 def check_meta() -> bool:
 
-    print('comparing local and source builds...')
+    print(timestamp(), 'INIT: comparing local & source files...')
 
     if not BULK_PATH.exists() or not META_PATH.exists():
         return True
@@ -325,11 +319,11 @@ def check_meta() -> bool:
 
 def pull_bulk() -> None:
 
-    print('downloading & extracting bulk files...')
+    print(timestamp(), 'GRAB: downloading & extracting bulk files...')
 
     for target in ('AllPrintings', 'Meta'):
 
-        fob = JSON_DIR / f'{target}.json'
+        fob = JSON_DIR / (target + '.json')
         zip_data = f'https://mtgjson.com/api/v5/{target}.json.gz'
 
         zip_data = requests.get(zip_data)
@@ -364,7 +358,7 @@ def get_cardbacks() -> None:
 
 def planar_bridge() -> None:
 
-    print('loading bulk data...')
+    print(timestamp(), 'INIT: loading bulk data...')
 
     bulk: dict[str, Any] = json.loads(BULK_PATH.read_bytes())
 
@@ -375,9 +369,11 @@ def planar_bridge() -> None:
         if set_obj.to_skip:
             continue
 
-        print(set_obj.set_code, '------------------------------------')
+        print(timestamp(), 'SET:', set_obj.set_code)
 
         set_obj.pull_objs()
+
+    print(timestamp(), 'DONE: Finished successfully.')
 
 
 if __name__ == '__main__':
