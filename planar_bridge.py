@@ -257,9 +257,9 @@ class SetObject:
                 continue
 
             if not paper_obj.img_path.exists():
-                paper_obj.message = 'GRAB: ' + paper_obj.message
+                paper_obj.message = 'NEW: ' + paper_obj.message
             elif img_res != paper_state:
-                paper_obj.message = 'NEWR: ' + paper_obj.message
+                paper_obj.message = 'ENH: ' + paper_obj.message
 
             paper_obj.download()
             states_dict[paper_obj.img_name] = img_res
@@ -358,7 +358,9 @@ def get_cardbacks() -> None:
 
 def planar_bridge() -> None:
 
-    print(timestamp(), 'INIT: loading bulk data...')
+    meta_date: str = json.loads(META_PATH.read_bytes())['meta']['date']
+
+    print(timestamp(), f'INIT: loading bulk data ({meta_date})...')
 
     bulk: dict[str, Any] = json.loads(BULK_PATH.read_bytes())
 
