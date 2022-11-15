@@ -1,7 +1,5 @@
-.env/
 .venv/
-Pipfile.lock
+.vscode/
 
-imgs/
-json/
 config.toml
+Pipfile.lock

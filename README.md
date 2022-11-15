@@ -1,27 +1,4 @@
-<p align="center">
-  <img
-    width=256px
-    src="https://user-images.githubusercontent.com/64651989/159095590-39a9c3ce-4a44-46b1-a597-515a3b282015.png"
-  />
-</p>
-
-<p align="center">
-  <a href="#planar-bridge">Planar Bridge</a>
-  <b>|</b>
-  <a href="#installation">Installation</a>
-  <b>|</b>
-  <a href="#usage">Usage</a>
-  <b>|</b>
-  <a href="#configuration">Configuration</a>
-  <b>|</b>
-  <a href="#terms-of-use">Terms of Use</a>
-  <b>|</b>
-  <a href="#credits">Credits</a>
-  <b>|</b>
-  <a href="#license">License</a>
-</p>
-
----
+<!--<img style="display:block;margin:auto;width:256px;" src="planar-bridge.png"/>-->
 
 # Planar Bridge
 
@@ -34,7 +11,7 @@ from [MTGJSON](https://mtgjson.com/).
 
 One greatly advantageous feature of Planar Bridge is that it upgrades the
 resolution on cards when a higher resolution is available. If a low-resolution
-scan exists locally, it will replace it with higher resolution scans if
+scan exists locally, it will replace it with higher-resolution scans if
 available on Scryfall. This is especially helpful in handling cards that are
 part of a spoiled set and have not been scanned at a crisp high resolution yet.
 
@@ -83,6 +60,8 @@ To run Planar Bridge, execute `planar_bridge.py`.
 
 ```sh
 $ python3 ./planar-bridge/planar-bridge.py
+[00:00:00] INIT: comparing local & source files...
+...
 ```
 
 Planar Bridge will then begin the download process. Keep in mind that with over
@@ -123,15 +102,16 @@ planar-bridge/
 │  ├─ AllPrintings.json
 │  └─ Meta.json
 ├─ .gitignore
+├─ config-example.toml
 ├─ LICENSE
 ├─ Pipfile
 ├─ planar_bridge.py
 └─ README.md
 ```
 
-Planar Bridge stores all card scans in `imgs/`, which you can symlink to a
-different directory if you want. Each card is categorized by set code, with
-tokens being stored in the `tokens/` subfolder of the set it belongs to.
+Planar Bridge stores all card scans in `imgs/` by default, which you can
+change in your config file if you want. Each card is categorized by set code,
+with tokens being stored in the `tokens/` subfolder of the set it belongs to.
 
 Planar Bridge names card image files according to that card's UUID from
 MTGJSON's database upon creation. At this time, there is no way to name a card
@@ -150,8 +130,8 @@ you already have downloaded.
 
 ## Configuration
 
-If you want to configure Planar Bridge, copy the default config below and place
-it in Planar Bridge's repo under the filename `config.toml`.
+If you want to configure Planar Bridge, copy and rename `config-example.toml`
+to `config.toml` inside this repo.
 
 Configurations you can make to Planar Bridge are specifying different `imgs/`
 paths for card scans, and which sets, set types, and promo types to exclude
@@ -162,61 +142,17 @@ For now, the configuration of Planar Bridge is limited, so if you have a
 suggestion for more options to configure, feel free to
 [open an issue](https://github.com/maallaard/planar-bridge/issues/new/).
 
-Here is the configuration layout used by default.
-
-```toml
-# When empty, this will default to the path of this repo.
-# You must provide the full path of the target directory if given.
-# Symlinks and external devices are accepted.
-img_dir = ''
-
-# Excludes unimplementable sets: art sets, un-sets, online-only, etc.
-xmt_types = [
-    'funny',
-    'memorabilia'
-]
-
-# Excludes sets that purely comprise of reprints.
-xmt_sets = [
-    'MB1',
-    'PDRC',
-    'PLIST',
-    'PURL'
-]
-
-# Excludes stamped promos, unnecessary duplicates, and others.
-xmt_promos = [
-    'datestamped',
-    'draftweekend',
-    'gameday',
-    'intropack',
-    'jpwalker',
-    'mediainsert',
-    'planeswalkerstamped',
-    'playerrewards',
-    'premiereshop',
-    'prerelease',
-    'promopack',
-    'release',
-    'setpromo',
-    'stamped',
-    'themepack',
-    'tourney',
-    'wizardsplaynetwork'
-]
-```
-
 ## Terms of Use
 
 By downloading and running this program, you agree to Wizards of the Coast's
 [Fan Content Policy](https://company.wizards.com/en/legal/fancontentpolicy/) as
 well as Scryfall's [Terms of Service](https://scryfall.com/docs/terms/).
 If you have any questions about what you can/cannot do regarding these
-policies, carefully read each article and FAQs on the links to WotC's and
+policies, carefully read each article and FAQ on the links to WotC's and
 Scryfall's terms and conditions.
 
 This program has been made with the intent of respecting the 50 - 100
-millisecond request rate limit that Scryfall enforces on their website:
+millisecond request rate limit that Scryfall enforces on its website:
 
 > We kindly ask that you insert 50 – 100 milliseconds of delay between the
 > requests you send to the server at api.scryfall.com. (i.e., 10 requests per

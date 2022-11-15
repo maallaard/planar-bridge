@@ -1,0 +1,58 @@
+# Planar Bridge example config file
+
+# ...
+always_pull = false
+
+# Excludes reprints (significantly reduces amount of duplicate cards).
+pull_reprints = false
+
+# ...
+pull_cardbacks = false
+
+# Excludes sets ...
+# These sets listed below are purely comprised of reprints.
+exempt_sets = [
+    "MB1",
+    "PDRC",
+    "PLIST",
+    "PURL",
+    "UPLIST",
+]
+
+# ...
+continuous_sets = ["SLD", "SLU", "SLX"]
+
+# Pardoned sets are re-included if under an excluded catagory.
+pardoned_sets = ["30A"]
+
+# ...
+# Excludes stamped promos, unnecessary duplicates, and others.
+exempt_promos = [
+    "datestamped",
+    "draftweekend",
+    "gameday",
+    "intropack",
+    "jpwalker",
+    "mediainsert",
+    "planeswalkerstamped",
+    "playerrewards",
+    "premiereshop",
+    "prerelease",
+    "promopack",
+    "release",
+    "setpromo",
+    "stamped",
+    "themepack",
+    "thick",
+    "tourney",
+    "wizardsplaynetwork",
+]
+
+# ...
+# Excludes unimplementable sets: art sets, un-sets, online-only, etc.
+exempt_types = [
+    "alchemy",
+    "funny",
+    "memorabilia",
+    "token",
+]
