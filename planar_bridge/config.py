@@ -1,67 +1,24 @@
 from typing import Any
-import tomli
+import tomllib
 
-import paths
-
-
-MTG_LANG: str = "English"
-
-DEFAULTS: dict[str, Any] = {
-    "always_pull": False,
-    "pull_reprints": False,
-    "pull_cardbacks": False,
-    "pardoned_sets": ["30A"],
-    "continuous_sets": [
-        "SLD",
-        "SLU",
-        "SLX",
-    ],
-    "exempt_sets": [
-        "MB1",
-        "PDRC",
-        "PLIST",
-        "PURL",
-        "UPLIST",
-    ],
-    "exempt_promos": [
-        "datestamped",
-        "draftweekend",
-        "gameday",
-        "intropack",
-        "jpwalker",
-        "mediainsert",
-        "planeswalkerstamped",
-        "playerrewards",
-        "premiereshop",
-        "prerelease",
-        "promopack",
-        "release",
-        "setpromo",
-        "stamped",
-        "themepack",
-        "thick",
-        "tourney",
-        "wizardsplaynetwork",
-    ],
-    "exempt_types": [
-        "alchemy",
-        "funny",
-        "memorabilia",
-        "token",
-    ],
-}
+from const import LANGUAGE_MAP, DEFAULT_CONFIG
+from paths import CONFIG_PATH
 
 
 def _get_toml() -> dict[str, Any]:
 
-    config_path = paths.DATA_DIR / "config.toml"
-
     config_defined: dict[str, Any] = {}
 
-    if config_path.exists():
-        config_defined = tomli.loads(config_path.read_text(encoding="UTF-8"))
+    if CONFIG_PATH.exists():
+        config_defined = tomllib.loads(CONFIG_PATH.read_text(encoding="UTF-8"))
 
-    return DEFAULTS | config_defined
+    config_runtime = DEFAULT_CONFIG | config_defined
+
+    for code, name in LANGUAGE_MAP.items():
+        if code == config_runtime["card_lang"]:
+            config_runtime.update({"card_lang":name})
+
+    return config_runtime
 
 
 CONFIG = _get_toml()
