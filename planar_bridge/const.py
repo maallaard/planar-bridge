@@ -5,7 +5,9 @@ import urllib3
 # Planar Bridge does not work with IPv6 yet.
 urllib3.util.connection.HAS_IPV6 = False
 
-MTGJSON_VERS: str = "5.2.0"
+MTGJSON_VERS: str = "5.2.1"
+
+TIMEOUT: float = 0.2
 
 CARDBACK_URLS: tuple[str, ...] = (
     "https://i.imgur.com/xiYusFq.jpg",
@@ -110,5 +112,5 @@ DEFAULT_CONFIG: dict[str, Any] = {
 VERS_WARNING: str = '\n'.join((
     "Planar Bridge is only expected to work with v" + MTGJSON_VERS,
     "Make sure there are no conflicts before proceeding!",
-    "MTGJSON changelog: https://mtgjson.com/changelog/mtgjson-v5/",
+    "MTGJSON changelog: https://mtgjson.com/changelogs/mtgjson-v5/",
 ))

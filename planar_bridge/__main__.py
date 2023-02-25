@@ -31,7 +31,7 @@ def main() -> None:
     for set_obj in bulk["data"].values():
         set_obj = objects.SetObject(set_obj)
 
-        if set_obj.to_skip:
+        if set_obj.to_omit:
             continue
 
         set_obj.pull()

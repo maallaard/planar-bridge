@@ -62,7 +62,7 @@ class PaperObject:
 
     def resolve(self) -> bool | None:
 
-        sleep(0.1)
+        sleep(const.TIMEOUT)
 
         url = f"https://api.scryfall.com/cards/{self.scry_id}?format=json"
 
@@ -80,7 +80,7 @@ class PaperObject:
 
         self.img_path.parent.mkdir(exist_ok=True, parents=True)
 
-        sleep(0.1)
+        sleep(const.TIMEOUT)
 
         url = f"https://api.scryfall.com/cards/{self.scry_id}?format=image"
 
@@ -101,7 +101,7 @@ class SetObject:
         self.states_path: Path = self.set_dir / ".states.json"
         self.is_partial: bool = bool(set_dict.get("isPartialPreview"))
 
-        self.to_skip: bool = any((
+        self.to_omit: bool = any((
             bool(str(set_dict["type"]) in CONFIG["exempt_types"]),
             bool(self.set_code in CONFIG["exempt_sets"]),
             bool(set_dict.get("isForeignOnly")),
@@ -109,7 +109,7 @@ class SetObject:
         ))
 
         if self.set_code in CONFIG["pardoned_sets"]:
-            self.to_skip = False
+            self.to_omit = False
 
         self.obj_list: list[dict[str, Any]] = [
             *list(set_dict["cards"]),
@@ -118,12 +118,10 @@ class SetObject:
 
     def load_states(self) -> dict[str, bool]:
 
-        states_dict: dict[str, bool]
+        states_dict: dict[str, bool] = {}
 
         if self.states_path.exists():
             states_dict = json.loads(self.states_path.read_bytes())
-        else:
-            states_dict = {}
 
         return states_dict
 
@@ -139,10 +137,8 @@ class SetObject:
         ))
 
         if skip_over:
-
             if not CONFIG["hide_skipped"]:
                 utils.status(self.set_code, 3)
-
             return
 
         utils.status(self.set_code, 2)
@@ -183,8 +179,8 @@ class SetObject:
 
 class FetcherObject:
     def __init__(self) -> None:
-        self.source: dict[str, str]
-        self.local: dict[str, str]
+        self.source: dict[str, str] = {}
+        self.local: dict[str, str] = {}
 
         self.bulks_exist: bool = all((
             paths.BULK_PATH.exists(),
@@ -238,9 +234,10 @@ class FetcherObject:
             message += '\n' + const.VERS_WARNING
 
             utils.status(message, 1)
-
             proceed = input("Do you want to proceed? [y/N]: ")
-            return utils.boolify_str(proceed, False)
+
+            if not utils.boolify_str(proceed, False):
+                return None
 
         return not same_date
 
