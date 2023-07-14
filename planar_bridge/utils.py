@@ -3,6 +3,7 @@ from colorama import Fore
 
 
 def status(msg: str, lvl: int) -> None:
+
     prefix: str
 
     match lvl:

@@ -1,9 +1,5 @@
 from typing import Any
-import urllib3
 
-
-# Planar Bridge does not work with IPv6 yet.
-urllib3.util.connection.HAS_IPV6 = False
 
 MTGJSON_VERS: str = "5.2.1"
 
@@ -61,10 +57,9 @@ LANGUAGE_MAP: dict[str, str] = {
 }
 
 DEFAULT_CONFIG: dict[str, Any] = {
-    "always_pull": False,
+    "always_pull": True,
     "pull_reprints": False,
     "pull_cardbacks": False,
-    "hide_skipped": False,
     "card_lang": "en",
     "pardoned_sets": [
         "30A",

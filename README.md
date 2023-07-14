@@ -26,13 +26,16 @@ Bridge progresses!
 
 ## Installation
 
+**WARNING** These instructions are obsolete and will be rewritten in the next
+commit. Please disregard this section for now. Thank you! (2023-07-14)
+
 Planar Bridge is supported on Linux and macOS. It is expected (not yet tested)
 to function on Windows. However, it is only confirmed to work with at least
-Python 3.10.0, so check your installed Python version if you are unsure:
+Python 3.11.0, so check your installed Python version if you are unsure:
 
 ```sh
 $ python3 -V
-Python 3.10.0
+Python 3.11.0
 ```
 
 (note that lines in code blocks beginning with `$` mean this line is used as
@@ -60,7 +63,7 @@ To run Planar Bridge, execute `planar_bridge.py`.
 
 ```sh
 $ python3 ./planar-bridge/planar-bridge.py
-[00:00:00] INIT: comparing local & source files...
+[12:34:56] INIT: comparing local & source files...
 ...
 ```
 
@@ -105,7 +108,7 @@ planar-bridge/
 ├─ config-example.toml
 ├─ LICENSE
 ├─ Pipfile
-├─ planar_bridge.py
+├─ planar_bridge/
 └─ README.md
 ```
 
@@ -125,8 +128,8 @@ In every set code folder, there will be a file named `.states.json`. This JSON
 file contains the resolutions of all the card scans in that set according to
 their UUIDs. This file is also found in `imgs/`, which states for each set code
 whether or not every card in that set is at the highest resolution available.
-**DO NOT** delete these files. If you do, you will have to re-download images
-you already have downloaded.
+Do not modify or delete these files, as they are required for proper
+functionality.
 
 ## Configuration
 
@@ -158,16 +161,19 @@ millisecond request rate limit that Scryfall enforces on its website:
 > requests you send to the server at api.scryfall.com. (i.e., 10 requests per
 > second on average).
 >
-> \- [Scryfall's API homepage](https://scryfall.com/docs/api/)
+> Submitting excessive requests to the server may result in a HTTP 429 Too
+> Many Requests status code. Continuing to overload the API after this point
+> may result in a temporary or permanent ban of your IP address.
+>
+> \- [Scryfall's API homepage](https://scryfall.com/docs/api/) (Feb 2023)
 
-**DO NOT** modify or remove this program's built-in timer that regulates the
+Do not modify or remove this program's built-in timer that regulates the
 request rate itself. If you remove it, your IP address will likely get
-blocked, either temporarily or permanently. Again, **DO NOT** modify the
-request rate of this program.
+blocked, either temporarily or permanently.
 
 With that being said, Planar Bridge and its developers accept zero
 responsibility regarding incidents that breach WotC's, Scryfall's, and/or
-Planar Bridge's terms and conditions. **USE AT YOUR OWN RISK!!!**
+Planar Bridge's terms and conditions. **USE AT YOUR OWN RISK!**
 
 ## Credits
 

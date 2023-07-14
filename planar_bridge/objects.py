@@ -128,19 +128,6 @@ class SetObject:
     def pull(self) -> None:
 
         states_dict = self.load_states()
-
-        skip_over: bool = all((
-            *states_dict.values(),
-            self.set_code not in CONFIG["continuous_sets"],
-            not self.is_partial,
-            bool(states_dict),
-        ))
-
-        if skip_over:
-            if not CONFIG["hide_skipped"]:
-                utils.status(self.set_code, 3)
-            return
-
         utils.status(self.set_code, 2)
 
         for paper_obj in self.obj_list:
@@ -179,6 +166,7 @@ class SetObject:
 
 class FetcherObject:
     def __init__(self) -> None:
+
         self.source: dict[str, str] = {}
         self.local: dict[str, str] = {}
 
@@ -200,6 +188,7 @@ class FetcherObject:
         self.date: str = self.source["date"]
 
     def fix_vers(self, to_fix: dict[str, str]) -> dict[str, str]:
+
         to_fix.update({"version":to_fix["version"].split("+")[0]})
         return to_fix
 

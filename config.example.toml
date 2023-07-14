@@ -1,15 +1,12 @@
 # Planar Bridge example config file
 
-# ...
-always_pull = false
-
-# Excludes reprints (significantly reduces amount of duplicate cards).
+# Download reprints (significantly increases amount of duplicate cards).
 pull_reprints = false
 
-# ...
+# Download a few scans of various cardbacks.
 pull_cardbacks = false
 
-# Excludes sets ...
+# Exclude sets that should not be downloaded.
 # These sets listed below are purely comprised of reprints.
 exempt_sets = [
     "MB1",
@@ -19,14 +16,12 @@ exempt_sets = [
     "UPLIST",
 ]
 
-# ...
+# (CURRENTY UNIMPLEMENTED!) List of sets that should always be parsed.
 continuous_sets = ["SLD", "SLU", "SLX"]
 
-# Pardoned sets are re-included if under an excluded catagory.
-pardoned_sets = ["30A"]
-
-# ...
-# Excludes stamped promos, unnecessary duplicates, and others.
+# Exclude certain promotional cards included in regular sets.
+# Full list of values can be found here:
+# https://mtgjson.com/data-models/card-set/#promotypes
 exempt_promos = [
     "datestamped",
     "draftweekend",
@@ -48,11 +43,23 @@ exempt_promos = [
     "wizardsplaynetwork",
 ]
 
-# ...
-# Excludes unimplementable sets: art sets, un-sets, online-only, etc.
+# Exclude specific types of sets from being downloaded.
+# Full list of values can be found here:
+# https://mtgjson.com/data-models/set/#type
 exempt_types = [
     "alchemy",
     "funny",
     "memorabilia",
     "token",
 ]
+
+# List of sets that should be re-included if under an excluded type.
+pardoned_sets = [
+    "2X2",
+    "CLB",
+    "DBL",
+]
+
+# Preferred language of downloaded cards.
+# (Keep in mind that many sets are only printed in English!)
+#card_lang = "en"

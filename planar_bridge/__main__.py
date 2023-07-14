@@ -1,5 +1,6 @@
 from typing import Any
 import json
+import signal
 import sys
 
 import objects
@@ -11,7 +12,16 @@ if sys.version_info.major != 3 or sys.version_info.minor < 11:
     raise SystemExit("Python version must be at least 3.11")
 
 
+# pylint: disable=unused-argument
+def handler(signal_recieved, frame):
+
+    print("\nSIGINT recieved (Ctrl-C), exiting...")
+    sys.exit(1)
+
+
 def main() -> None:
+
+    signal.signal(signal.SIGINT, handler)
 
     utils.status("comparing local & source files...", 0)
 

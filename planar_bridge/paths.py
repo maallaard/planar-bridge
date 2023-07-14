@@ -21,8 +21,6 @@ def _default_path() -> Path:
     return path_obj
 
 
-#REPO_DIR: Path = Path(__file__).resolve().parents[2]
-
 DATA_DIR: Path = _default_path()
 
 JSON_DIR: Path = DATA_DIR / ".json"

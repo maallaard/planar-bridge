@@ -7,7 +7,7 @@ name = "pypi"
 python_version = "3.11"
 
 [packages]
-requests = "~=2.28"
+requests = "~=2.31"
 colorama = "~=0.4"
 
 [dev-packages]
