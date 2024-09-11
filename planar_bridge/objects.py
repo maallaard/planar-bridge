@@ -27,7 +27,7 @@ class PaperObject:
         if promo_types is None:
             promo_types = []
 
-        promo_intrxn = set(CONFIG["exempt_promos"]) & set(promo_types)
+        promo_crosscheck = set(CONFIG["exempt_promos"]) & set(promo_types)
 
         self.bad_card: bool = any((
             paper_dict.get("isReprint") and not CONFIG["pull_reprints"],
@@ -36,11 +36,11 @@ class PaperObject:
             bool(paper_dict.get("isOnlineOnly")),
             bool(paper_dict.get("isFunny")),
             layout in const.LAYOUT_BAD,
-            len(promo_intrxn) > 0,
+            len(promo_crosscheck) > 0,
         ))
 
         if layout in const.LAYOUT_TWOSIDED:
-            self.face = "back" if paper_dict.get("side") == "b" else "front"
+            self.face = "back" if paper_dict.get("side") == 'b' else "front"
         else:
             self.face = None
 
@@ -49,7 +49,7 @@ class PaperObject:
             img_name.append(self.uuid)
             img_name = list(dict.fromkeys(img_name))
             img_name.sort()
-            img_name = ("_").join(map(str, img_name))
+            img_name = ('_').join(map(str, img_name))
         else:
             img_name = self.uuid
 
@@ -127,10 +127,21 @@ class SetObject:
 
     def pull(self) -> None:
 
-        states_dict = self.load_states()
-        utils.status(self.set_code, 2)
+        progress: str
+        cards_count: int = 0
+        cards_total: int = len(self.obj_list)
+
+        states_dict: dict[str, bool] = self.load_states()
 
         for paper_obj in self.obj_list:
+
+            cards_count += 1
+            progress = format(cards_count/cards_total, ".1%")
+            progress = progress.zfill(5).rjust(5)
+            progress = f"    ({progress})> "
+
+            if cards_count == cards_total:
+                progress = "     (100%)> "
 
             paper_obj = PaperObject(paper_obj, self.set_dir)
 
@@ -154,7 +165,8 @@ class SetObject:
             paper_obj.download()
             states_dict[paper_obj.img_name] = img_res
 
-            message = paper_obj.set_code + " > " + paper_obj.uuid
+            message = paper_obj.set_code.ljust(4) + progress + paper_obj.uuid
+
             utils.status(message, 5 if path_exists else 4)
 
         if states_dict != self.load_states():
@@ -167,8 +179,8 @@ class SetObject:
 class FetcherObject:
     def __init__(self) -> None:
 
-        self.source: dict[str, str] = {}
-        self.local: dict[str, str] = {}
+        self.source: dict = {}
+        self.local: dict = {}
 
         self.bulks_exist: bool = all((
             paths.BULK_PATH.exists(),

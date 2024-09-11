@@ -1,5 +1,7 @@
 .venv/
 .vscode/
+imgs/
+json/
 
 config.toml
 Pipfile.lock

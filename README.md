@@ -24,18 +24,20 @@ commits are made.
 Please save and share this project if you want to contribute or see how Planar
 Bridge progresses!
 
-## Installation
+To-Do:
+- Comments in source code
+- Tests for debugging
+- Automatic installation
 
-**WARNING** These instructions are obsolete and will be rewritten in the next
-commit. Please disregard this section for now. Thank you! (2023-07-14)
+## Installation
 
 Planar Bridge is supported on Linux and macOS. It is expected (not yet tested)
 to function on Windows. However, it is only confirmed to work with at least
-Python 3.11.0, so check your installed Python version if you are unsure:
+Python 3.12.0, so check your installed Python version if you are unsure:
 
 ```sh
 $ python3 -V
-Python 3.11.0
+Python 3.12.0
 ```
 
 (note that lines in code blocks beginning with `$` mean this line is used as
@@ -48,10 +50,10 @@ $ git clone --depth=1 https://github.com/maallaard/planar-bridge.git
 ```
 
 Then, install the [requests](https://pypi.org/project/requests/) and
-[tomli](https://pypi.org/project/tomli/) packages using pip.
+[colorama](https://pypi.org/project/colorama/) packages using pip.
 
 ```sh
-$ python3 -m pip install requests tomli
+$ python3 -m pip install requests colorama
 ```
 
 Alternatively, you can use [pipenv](https://github.com/pypa/pipenv/) to set
@@ -63,7 +65,7 @@ To run Planar Bridge, execute `planar_bridge.py`.
 
 ```sh
 $ python3 ./planar-bridge/planar-bridge.py
-[12:34:56] INIT: comparing local & source files...
+[12:34:56] INFO: comparing local & source files...
 ...
 ```
 
@@ -79,7 +81,7 @@ directory to store card scans in, which is covered in the
 [Configuration](#configuration) section.
 
 Here is an example file tree layout of Planar Bridge's repo directory with
-some example set codes and fake UUIDs:
+some example set codes and phony UUIDs:
 
 ```txt
 planar-bridge/
@@ -155,17 +157,18 @@ policies, carefully read each article and FAQ on the links to WotC's and
 Scryfall's terms and conditions.
 
 This program has been made with the intent of respecting the 50 - 100
-millisecond request rate limit that Scryfall enforces on its website:
+millisecond request rate limit that Scryfall denotes on its website:
 
 > We kindly ask that you insert 50 – 100 milliseconds of delay between the
 > requests you send to the server at api.scryfall.com. (i.e., 10 requests per
 > second on average).
 >
-> Submitting excessive requests to the server may result in a HTTP 429 Too
-> Many Requests status code. Continuing to overload the API after this point
-> may result in a temporary or permanent ban of your IP address.
+> Submitting excessive requests to the server may result in a HTTP 429 Too Many
+> Requests status code. Overloading the API after this point may result in a
+> temporary or permanent ban of your IP address. Applications that continously
+> recieve rate limit warnings over a longer period may also be blocked.
 >
-> \- [Scryfall's API homepage](https://scryfall.com/docs/api/) (Feb 2023)
+> \- [Scryfall's API homepage](https://scryfall.com/docs/api/) (Sep 2024)
 
 Do not modify or remove this program's built-in timer that regulates the
 request rate itself. If you remove it, your IP address will likely get
@@ -173,7 +176,7 @@ blocked, either temporarily or permanently.
 
 With that being said, Planar Bridge and its developers accept zero
 responsibility regarding incidents that breach WotC's, Scryfall's, and/or
-Planar Bridge's terms and conditions. **USE AT YOUR OWN RISK!**
+Planar Bridge's terms and conditions.
 
 ## Credits
 

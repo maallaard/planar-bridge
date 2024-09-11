@@ -1,9 +1,9 @@
 from typing import Any
 
 
-MTGJSON_VERS: str = "5.2.1"
+MTGJSON_VERS: str = "5.2.2"
 
-TIMEOUT: float = 0.2
+TIMEOUT: float = 0.33
 
 CARDBACK_URLS: tuple[str, ...] = (
     "https://i.imgur.com/xiYusFq.jpg",
