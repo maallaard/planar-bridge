@@ -22,6 +22,18 @@ def status(msg: str, lvl: int) -> None:
         print(timestamp, prefix, line)
 
 
+def progress_str(count: int, total: int, arrow: bool) -> str:
+
+    progress: str = f" ({format(count / total, ".1%").zfill(5).rjust(5)})"
+
+    if count == total:
+        progress = "  (100%)"
+    if arrow:
+        progress += "> "
+
+    return progress
+
+
 def boolify_str(bool_str: str, default: bool | None = None) -> bool:
 
     if not bool_str and default is not None:

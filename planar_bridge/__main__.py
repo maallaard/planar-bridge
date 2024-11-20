@@ -50,11 +50,7 @@ def main() -> None:
         if set_obj.to_omit:
             continue
 
-        progress = format(sets_count / sets_total, ".1%").zfill(5).rjust(5)
-        progress = f" ({progress})"
-
-        if sets_count == sets_total:
-            progress = "  (100%)"
+        progress = utils.progress_str(sets_count, sets_total, False)
 
         utils.status(set_obj.set_code.ljust(5) + progress, 2)
         set_obj.pull()

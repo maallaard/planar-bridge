@@ -136,13 +136,7 @@ class SetObject:
         for paper_obj in self.obj_list:
 
             cards_count += 1
-            progress = format(cards_count/cards_total, ".1%")
-            progress = progress.zfill(5).rjust(5)
-            progress = f"    ({progress})> "
-
-            if cards_count == cards_total:
-                progress = "     (100%)> "
-
+            progress = utils.progress_str(cards_count, cards_total, True)
             paper_obj = PaperObject(paper_obj, self.set_dir)
 
             if paper_obj.bad_card:
