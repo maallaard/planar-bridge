@@ -1,5 +1,5 @@
-from pathlib import Path
 from time import sleep
+from pathlib import Path
 from typing import Any
 import gzip
 import json
@@ -10,6 +10,7 @@ import paths
 import utils
 
 from requests import Session
+
 sesh = Session()
 
 
@@ -29,18 +30,20 @@ class PaperObject:
 
         promo_crosscheck = set(CONFIG["exempt_promos"]) & set(promo_types)
 
-        self.bad_card: bool = any((
-            paper_dict.get("isReprint") and not CONFIG["pull_reprints"],
+        bad_card_conditions: tuple[bool, ...] = (
+            bool(paper_dict.get("isReprint")) and not CONFIG["pull_reprints"],
             paper_dict["language"] not in [CONFIG["card_lang"], "Phyrexian"],
             paper_dict["name"] in ["Checklist", "Double-Faced"],
             bool(paper_dict.get("isOnlineOnly")),
             bool(paper_dict.get("isFunny")),
             layout in const.LAYOUT_BAD,
             len(promo_crosscheck) > 0,
-        ))
+        )
+
+        self.bad_card: bool = any(bad_card_conditions)
 
         if layout in const.LAYOUT_TWOSIDED:
-            self.face = "back" if paper_dict.get("side") == 'b' else "front"
+            self.face = "back" if paper_dict.get("side") == "b" else "front"
         else:
             self.face = None
 
@@ -49,7 +52,7 @@ class PaperObject:
             img_name.append(self.uuid)
             img_name = list(dict.fromkeys(img_name))
             img_name.sort()
-            img_name = ('_').join(map(str, img_name))
+            img_name = ("_").join(map(str, img_name))
         else:
             img_name = self.uuid
 
@@ -101,12 +104,14 @@ class SetObject:
         self.states_path: Path = self.set_dir / ".states.json"
         self.is_partial: bool = bool(set_dict.get("isPartialPreview"))
 
-        self.to_omit: bool = any((
+        omit_conditions: tuple[bool, ...] = (
             bool(str(set_dict["type"]) in CONFIG["exempt_types"]),
             bool(self.set_code in CONFIG["exempt_sets"]),
             bool(set_dict.get("isForeignOnly")),
             bool(set_dict.get("isOnlineOnly")),
-        ))
+        )
+
+        self.to_omit: bool = any(omit_conditions)
 
         if self.set_code in CONFIG["pardoned_sets"]:
             self.to_omit = False
@@ -173,13 +178,15 @@ class SetObject:
 class FetcherObject:
     def __init__(self) -> None:
 
-        self.source: dict = {}
         self.local: dict = {}
+        self.source: dict = {}
 
-        self.bulks_exist: bool = all((
+        bulks_exist: tuple[bool, ...] = (
             paths.BULK_PATH.exists(),
             paths.META_PATH.exists(),
-        ))
+        )
+
+        self.bulks_exist: bool = all(bulks_exist)
 
         url = "https://mtgjson.com/api/v5/Meta.json"
         dat = sesh.get(url, timeout=30)
@@ -195,7 +202,7 @@ class FetcherObject:
 
     def fix_vers(self, to_fix: dict[str, str]) -> dict[str, str]:
 
-        to_fix.update({"version":to_fix["version"].split("+")[0]})
+        to_fix.update({"version": to_fix["version"].split("+")[0]})
         return to_fix
 
     def pull_bulk(self) -> None:
@@ -214,7 +221,7 @@ class FetcherObject:
 
     def outdated(self) -> bool | None:
 
-        if not (self.bulks_exist or self.local):
+        if not self.bulks_exist and not self.local:
             return True
 
         same_date: bool = self.local["date"] == self.source["date"]
@@ -226,7 +233,7 @@ class FetcherObject:
 
             message = "MTGJSON has been updated to v"
             message += self.source["version"]
-            message += '\n' + const.VERS_WARNING
+            message += "\n" + const.VERS_WARNING
 
             utils.status(message, 1)
             proceed = input("Do you want to proceed? [y/N]: ")
