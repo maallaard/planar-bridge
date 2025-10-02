@@ -8,8 +8,8 @@ import paths
 import utils
 
 
-if sys.version_info.major != 3 or sys.version_info.minor < 12:
-    raise SystemExit("Python version must be at least 3.12")
+if sys.version_info.major != 3 or sys.version_info.minor < 13:
+    raise SystemExit("Python version must be at least 3.13")
 
 
 # pylint: disable=unused-argument
