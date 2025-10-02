@@ -16,7 +16,7 @@ def _get_toml() -> dict[str, Any]:
 
     for code, name in LANGUAGE_MAP.items():
         if code == config_runtime["card_lang"]:
-            config_runtime.update({"card_lang":name})
+            config_runtime.update({"card_lang": name})
 
     return config_runtime
 

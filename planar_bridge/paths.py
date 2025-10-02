@@ -8,10 +8,13 @@ def _default_path() -> Path:
     is_posix: bool = os.name == "posix"
 
     if path_env is None:
-        path_env = os.getenv(
-            "XDG_DATA_HOME" if is_posix else "AppData",
-            "~/.local/share" if is_posix else "%UserProfile%/AppData"
-        ) + "/planar-bridge"
+        path_env = (
+            os.getenv(
+                "XDG_DATA_HOME" if is_posix else "AppData",
+                "~/.local/share" if is_posix else "%UserProfile%/AppData",
+            )
+            + "/planar-bridge"
+        )
 
     path_obj: Path = Path(path_env).resolve()
 
