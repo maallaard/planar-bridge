@@ -4,14 +4,13 @@ verify_ssl = true
 name = "pypi"
 
 [requires]
-python_version = "3.12"
+python_version = "3.13"
 
 [packages]
-requests = "~=2.31"
+requests = "~=2.32"
 colorama = "~=0.4"
 
 [dev-packages]
 black = "*"
 pipenv = "*"
 pylint = "*"
-#pytest = "*"
