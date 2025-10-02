@@ -20,6 +20,7 @@ class PaperObject:
         self.uuid: str = paper_dict["uuid"]
         self.set_code: str = paper_dict["setCode"]
         self.scry_id: str = paper_dict["identifiers"]["scryfallId"]
+        self.card_name: str = paper_dict["name"]
 
         layout: str = paper_dict["layout"]
         related: list[str] | None = paper_dict.get("otherFaceIds")
@@ -164,7 +165,8 @@ class SetObject:
             paper_obj.download()
             states_dict[paper_obj.img_name] = img_res
 
-            message = paper_obj.set_code.ljust(4) + progress + paper_obj.uuid
+            message = paper_obj.set_code.ljust(5) + progress
+            message += paper_obj.uuid + " | " + paper_obj.card_name
 
             utils.status(message, 5 if path_exists else 4)
 
