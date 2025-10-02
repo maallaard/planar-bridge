@@ -1,6 +1,7 @@
 from time import sleep
 from pathlib import Path
 from typing import Any
+from urllib.error import HTTPError
 import gzip
 import json
 
@@ -71,7 +72,6 @@ class PaperObject:
         url = f"https://api.scryfall.com/cards/{self.scry_id}?format=json"
 
         img = sesh.get(url, timeout=30)
-        img.raise_for_status()
 
         img_status = str(img.json()["image_status"])
 
@@ -80,7 +80,7 @@ class PaperObject:
 
         return bool(img_status == "highres_scan")
 
-    def download(self) -> None:
+    def download(self) -> bool:
 
         self.img_path.parent.mkdir(exist_ok=True, parents=True)
 
@@ -92,9 +92,15 @@ class PaperObject:
             url += "&face=" + self.face
 
         img = sesh.get(url, timeout=30)
-        img.raise_for_status()
+
+        try:
+            img.raise_for_status()
+        except HTTPError:
+            return False
 
         self.img_path.write_bytes(img.content)
+
+        return True
 
 
 class SetObject:
@@ -131,11 +137,12 @@ class SetObject:
 
         return states_dict
 
-    def pull(self) -> None:
+    def pull(self) -> bool:
 
         progress: str
         cards_count: int = 0
         cards_total: int = len(self.obj_list)
+        status_nominal: bool = True
 
         states_dict: dict[str, bool] = self.load_states()
 
@@ -162,7 +169,10 @@ class SetObject:
             if (img_res == paper_state and path_exists) or img_res is None:
                 continue
 
-            paper_obj.download()
+            if not paper_obj.download():
+                status_nominal = False
+                break
+
             states_dict[paper_obj.img_name] = img_res
 
             message = paper_obj.set_code.ljust(5) + progress
@@ -175,6 +185,8 @@ class SetObject:
                 json.dumps(states_dict, sort_keys=True),
                 encoding="UTF-8",
             )
+
+        return status_nominal
 
 
 class FetcherObject:

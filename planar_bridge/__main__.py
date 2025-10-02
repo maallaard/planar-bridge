@@ -41,6 +41,7 @@ def main() -> None:
     progress: str
     sets_count: int = 0
     sets_total: int = len(bulk["data"])
+    status_nominal: bool = True
 
     for set_obj in bulk["data"].values():
 
@@ -53,9 +54,16 @@ def main() -> None:
         progress = utils.progress_str(sets_count, sets_total, False)
 
         utils.status(set_obj.set_code.ljust(5) + progress, 2)
-        set_obj.pull()
 
-    utils.status("finished successfully.", 0)
+        status_nominal = set_obj.pull()
+
+        if not status_nominal:
+            break
+
+    if status_nominal:
+        utils.status("finished successfully.", 0)
+    else:
+        utils.status("HTTPError raised, saving & exiting...", 1)
 
 
 if __name__ == "__main__":
