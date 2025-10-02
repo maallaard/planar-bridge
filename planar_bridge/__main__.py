@@ -25,17 +25,17 @@ def main() -> None:
 
     utils.status("comparing local & source files...", 0)
 
-    fetcher = objects.FetcherObject()
-    is_outdated: bool | None = fetcher.outdated()
+    meta_obj = objects.MetaObject()
+    is_outdated: bool | None = meta_obj.outdated()
 
     if is_outdated is None:
         return
 
     if is_outdated:
         utils.status("downloading bulk files...", 0)
-        fetcher.pull_bulk()
+        meta_obj.pull_bulk()
 
-    utils.status(f"loading bulk data ({fetcher.date})...", 0)
+    utils.status(f"loading bulk data ({meta_obj.date})...", 0)
     bulk: dict[str, Any] = json.loads(paths.BULK_PATH.read_bytes())
 
     progress: str

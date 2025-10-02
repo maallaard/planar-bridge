@@ -194,13 +194,13 @@ class SetObject:
         return status_nominal
 
 
-class FetcherObject:
+class MetaObject:
     def __init__(self) -> None:
 
         self.local: dict = {}
         self.source: dict = {}
 
-        bulks_exist: tuple[bool, ...] = (
+        bulks_exist: tuple[bool, bool] = (
             paths.BULK_PATH.exists(),
             paths.META_PATH.exists(),
         )
