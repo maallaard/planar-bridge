@@ -110,6 +110,8 @@ class SetObject:
         self.set_dir: Path = paths.DATA_DIR / self.set_code
         self.states_path: Path = self.set_dir / ".states.json"
         self.is_partial: bool = bool(set_dict.get("isPartialPreview"))
+        self.cards_count: int
+        self.cards_total: int
 
         omit_conditions: tuple[bool, ...] = (
             bool(str(set_dict["type"]) in CONFIG["exempt_types"]),
@@ -137,20 +139,26 @@ class SetObject:
 
         return states_dict
 
+    def message(self, uuid: str, name: str, path: bool) -> None:
+
+        progress = utils.progress_str(self.cards_count, self.cards_total, True)
+
+        message = self.set_code.ljust(5) + progress
+        message += uuid + " | " + name
+
+        utils.status(message, 5 if path else 4)
+
     def pull(self) -> bool:
 
-        progress: str
-        cards_count: int = 0
-        cards_total: int = len(self.obj_list)
+        self.cards_count = 0
+        self.cards_total = len(self.obj_list)
+        states_dict: dict[str, bool] = self.load_states()
         status_nominal: bool = True
 
-        states_dict: dict[str, bool] = self.load_states()
+        for paper_entry in self.obj_list:
 
-        for paper_obj in self.obj_list:
-
-            cards_count += 1
-            progress = utils.progress_str(cards_count, cards_total, True)
-            paper_obj = PaperObject(paper_obj, self.set_dir)
+            self.cards_count += 1
+            paper_obj = PaperObject(paper_entry, self.set_dir)
 
             if paper_obj.bad_card:
                 continue
@@ -175,10 +183,7 @@ class SetObject:
 
             states_dict[paper_obj.img_name] = img_res
 
-            message = paper_obj.set_code.ljust(5) + progress
-            message += paper_obj.uuid + " | " + paper_obj.card_name
-
-            utils.status(message, 5 if path_exists else 4)
+            self.message(paper_obj.uuid, paper_obj.card_name, path_exists)
 
         if states_dict != self.load_states():
             self.states_path.write_text(
