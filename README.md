@@ -33,11 +33,11 @@ To-Do:
 
 Planar Bridge is supported on Linux and macOS. It is expected (not yet tested)
 to function on Windows. However, it is only confirmed to work with at least
-Python 3.12.0, so check your installed Python version if you are unsure:
+Python 3.13.0, so check your installed Python version if you are unsure:
 
 ```sh
 $ python3 -V
-Python 3.12.0
+Python 3.13.0
 ```
 
 (note that lines in code blocks beginning with `$` mean this line is used as
