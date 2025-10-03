@@ -19,6 +19,8 @@ def status(msg: str, lvl: int) -> None:
             prefix = Fore.MAGENTA + "NEW CARD"
         case 5:
             prefix = Fore.BLUE + "ENHANCED"
+        case 6:
+            prefix = Fore.RED + "ERROR"
         case _:
             raise ValueError(lvl)
 

@@ -1,9 +1,10 @@
 from time import sleep
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from urllib.error import HTTPError
 import gzip
 import json
+import sys
 
 from config import CONFIG
 import const
@@ -15,17 +16,19 @@ from requests import Session
 sesh = Session()
 
 
-class PaperObject:
-    def __init__(self, paper_dict: dict[str, Any], set_dir: Path) -> None:
+class CardObject:
+    def __init__(self, card_dict: dict[str, Any], set_dir: Path) -> None:
 
-        self.uuid: str = paper_dict["uuid"]
-        self.set_code: str = paper_dict["setCode"]
-        self.scry_id: str = paper_dict["identifiers"]["scryfallId"]
-        self.card_name: str = paper_dict["name"]
+        self.uuid: str = card_dict["uuid"]
+        self.set_code: str = card_dict["setCode"]
+        self.scry_id: str = card_dict["identifiers"]["scryfallId"]
+        self.message_substr: str = self.uuid + " | " + card_dict["name"]
+        self.face: Literal["front", "back"] | None = None
+        self.is_highres_local: bool
 
-        layout: str = paper_dict["layout"]
-        related: list[str] | None = paper_dict.get("otherFaceIds")
-        promo_types: list[str] | None = paper_dict.get("promoTypes")
+        layout: str = card_dict["layout"]
+        related: list[str] | None = card_dict.get("otherFaceIds")
+        promo_types: list[str] | None = card_dict.get("promoTypes")
 
         if promo_types is None:
             promo_types = []
@@ -33,11 +36,11 @@ class PaperObject:
         promo_crosscheck = set(CONFIG["exempt_promos"]) & set(promo_types)
 
         bad_card_conditions: tuple[bool, ...] = (
-            bool(paper_dict.get("isReprint")) and not CONFIG["pull_reprints"],
-            paper_dict["language"] not in [CONFIG["card_lang"], "Phyrexian"],
-            paper_dict["name"] in ["Checklist", "Double-Faced"],
-            bool(paper_dict.get("isOnlineOnly")),
-            bool(paper_dict.get("isFunny")),
+            bool(card_dict.get("isReprint")) and not CONFIG["pull_reprints"],
+            card_dict["language"] not in [CONFIG["card_lang"], "Phyrexian"],
+            card_dict["name"] in ["Checklist", "Double-Faced"],
+            bool(card_dict.get("isOnlineOnly")),
+            bool(card_dict.get("isFunny")),
             layout in const.LAYOUT_BAD,
             len(promo_crosscheck) > 0,
         )
@@ -45,9 +48,7 @@ class PaperObject:
         self.bad_card: bool = any(bad_card_conditions)
 
         if layout in const.LAYOUT_TWOSIDED:
-            self.face = "back" if paper_dict.get("side") == "b" else "front"
-        else:
-            self.face = None
+            self.face = "front" if card_dict.get("side") == "a" else "back"
 
         if layout in const.LAYOUT_COMBINED and related is not None:
             img_name = related
@@ -64,21 +65,30 @@ class PaperObject:
             set_dir = set_dir / "tokens"
 
         self.img_path: Path = set_dir / (self.img_name + ".jpg")
+        self.path_exists: bool = self.img_path.exists()
 
-    def resolve(self) -> bool | None:
+    def load_local_res(self, card_state: bool | None) -> None:
+
+        self.is_highres_local = False if card_state is None else card_state
+
+    def parse_source_res(self) -> bool | None:
 
         sleep(const.TIMEOUT)
 
         url = f"https://api.scryfall.com/cards/{self.scry_id}?format=json"
 
-        img = sesh.get(url, timeout=30)
+        source = sesh.get(url, timeout=30)
+        source_res = str(source.json()["image_status"])
 
-        img_status = str(img.json()["image_status"])
-
-        if img_status in ["placeholder", "missing"]:
+        if source_res in ["placeholder", "missing"]:
             return None
 
-        return bool(img_status == "highres_scan")
+        source_state = bool(source_res == "highres_scan")
+
+        if source_state == self.is_highres_local and self.path_exists:
+            return None
+
+        return source_state
 
     def download(self) -> bool:
 
@@ -102,6 +112,22 @@ class PaperObject:
 
         return True
 
+    def persist_response(self) -> bool:
+
+        for i in range(1, 6):
+
+            if self.download():
+                return True
+
+            sleep(i * 30)
+
+        return False
+
+    def message(self, progress: str) -> None:
+
+        message = self.set_code.ljust(5) + progress + self.message_substr
+        utils.status(message, 5 if self.path_exists else 4)
+
 
 class SetObject:
     def __init__(self, set_dict: dict[str, Any]) -> None:
@@ -110,8 +136,7 @@ class SetObject:
         self.set_dir: Path = paths.DATA_DIR / self.set_code
         self.states_path: Path = self.set_dir / ".states.json"
         self.is_partial: bool = bool(set_dict.get("isPartialPreview"))
-        self.cards_count: int
-        self.cards_total: int
+        self.states_dict: dict[str, bool] = {}
 
         omit_conditions: tuple[bool, ...] = (
             bool(str(set_dict["type"]) in CONFIG["exempt_types"]),
@@ -125,10 +150,13 @@ class SetObject:
         if self.set_code in CONFIG["pardoned_sets"]:
             self.to_omit = False
 
-        self.obj_list: list[dict[str, Any]] = [
+        self.card_entries: list[dict[str, Any]] = [
             *list(set_dict["cards"]),
             *list(set_dict["tokens"]),
         ]
+
+        self.card_total: int = len(self.card_entries)
+        self.card_count: int = 0
 
     def load_states(self) -> dict[str, bool]:
 
@@ -139,59 +167,26 @@ class SetObject:
 
         return states_dict
 
-    def message(self, uuid: str, name: str, path: bool) -> None:
+    def save_states(self) -> None:
 
-        progress = utils.progress_str(self.cards_count, self.cards_total, True)
+        if self.states_dict == self.load_states() or not self.states_dict:
+            return
 
-        message = self.set_code.ljust(5) + progress
-        message += uuid + " | " + name
+        self.states_path.write_text(
+            json.dumps(self.states_dict, sort_keys=True),
+            encoding="UTF-8",
+        )
 
-        utils.status(message, 5 if path else 4)
+    def progress(self) -> str:
 
-    def pull(self) -> bool:
+        return utils.progress_str(self.card_count, self.card_total, True)
 
-        self.cards_count = 0
-        self.cards_total = len(self.obj_list)
-        states_dict: dict[str, bool] = self.load_states()
-        status_nominal: bool = True
+    # pylint: disable=unused-argument
+    def handle_sigint(self, signum, frame):
 
-        for paper_entry in self.obj_list:
-
-            self.cards_count += 1
-            paper_obj = PaperObject(paper_entry, self.set_dir)
-
-            if paper_obj.bad_card:
-                continue
-
-            path_exists: bool = paper_obj.img_path.exists()
-            paper_state: bool | None = states_dict.get(paper_obj.img_name)
-
-            if paper_state is None:
-                paper_state = False
-
-            if paper_state and path_exists:
-                continue
-
-            img_res = paper_obj.resolve()
-
-            if (img_res == paper_state and path_exists) or img_res is None:
-                continue
-
-            if not paper_obj.download():
-                status_nominal = False
-                break
-
-            states_dict[paper_obj.img_name] = img_res
-
-            self.message(paper_obj.uuid, paper_obj.card_name, path_exists)
-
-        if states_dict != self.load_states():
-            self.states_path.write_text(
-                json.dumps(states_dict, sort_keys=True),
-                encoding="UTF-8",
-            )
-
-        return status_nominal
+        utils.status("SIGINT recieved (Ctrl-C), saving & exiting...", 6)
+        self.save_states()
+        sys.exit(1)
 
 
 class MetaObject:
@@ -238,7 +233,7 @@ class MetaObject:
         if CONFIG["pull_cardbacks"]:
             self.cardbacks()
 
-    def outdated(self) -> bool | None:
+    def is_outdated(self) -> bool | None:
 
         if not self.bulks_exist and not self.local:
             return True
