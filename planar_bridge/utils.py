@@ -33,10 +33,10 @@ def status(msg: str, lvl: int) -> None:
 
 def progress_str(count: int, total: int, arrow: bool) -> str:
 
-    progress: str = f" ({format(count / total, ".1%").zfill(5).rjust(5)})"
+    progress: str = f"({format(count / total, ".1%").zfill(5).rjust(5)})"
 
     if count == total:
-        progress = "  (100%)"
+        progress = " (100%)"
     if arrow:
         progress += "> "
 

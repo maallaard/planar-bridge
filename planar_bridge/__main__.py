@@ -55,10 +55,10 @@ def main() -> None:
         if set_obj.to_omit:
             continue
 
-        progress = utils.progress_str(set_count, set_total, False)
-        utils.status(set_obj.set_code.ljust(5) + progress, 2)
+        total_progress = utils.progress_str(set_count, set_total, False)
+        utils.status(total_progress + " " + set_obj.set_code.ljust(6), 2)
 
-        set_obj.states_dict = set_obj.load_states()
+        set_obj.states_dict = set_obj.read_states()
 
         for card_entry in set_obj.card_entries:
 
@@ -74,21 +74,22 @@ def main() -> None:
             if card_obj.is_highres_local and card_obj.path_exists:
                 continue
 
-            source_res = card_obj.parse_source_res()
+            source_ctrl, source_res = card_obj.parse_source_res()
 
-            if source_res is None:
+            if not source_ctrl and not source_res:
+                set_obj.handle_httperror()
+
+            if not source_ctrl:
                 continue
 
-            if not card_obj.persist_response():
-                utils.status("HTTPError raised, saving & exiting...", 6)
-                set_obj.save_states()
-                raise RuntimeError
+            if not card_obj.download():
+                set_obj.handle_httperror()
 
             set_obj.states_dict[card_obj.img_name] = source_res
 
-            card_obj.message(set_obj.progress())
+            card_obj.message(total_progress, set_obj.set_progress())
 
-        set_obj.save_states()
+        set_obj.write_states()
 
     utils.status("Finished successfully.", 0)
 

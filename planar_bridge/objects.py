@@ -11,7 +11,7 @@ import const
 import paths
 import utils
 
-from requests import Session
+from requests import Response, Session
 
 sesh = Session()
 
@@ -67,28 +67,45 @@ class CardObject:
         self.img_path: Path = set_dir / (self.img_name + ".jpg")
         self.path_exists: bool = self.img_path.exists()
 
+    def handle_response(self, url: str) -> Response | None:
+
+        response = sesh.get(url, timeout=30)
+
+        for i in range(1, 6):
+            try:
+                response.raise_for_status()
+                return response
+            except HTTPError:
+                sleep(i * 30 if i > 4 else 0)
+
+        return None
+
     def load_local_res(self, card_state: bool | None) -> None:
 
         self.is_highres_local = False if card_state is None else card_state
 
-    def parse_source_res(self) -> bool | None:
+    def parse_source_res(self) -> tuple[bool, bool]:
 
         sleep(const.TIMEOUT)
 
         url = f"https://api.scryfall.com/cards/{self.scry_id}?format=json"
 
-        source = sesh.get(url, timeout=30)
+        source = self.handle_response(url)
+
+        if source is None:
+            return False, False
+
         source_res = str(source.json()["image_status"])
 
         if source_res in ["placeholder", "missing"]:
-            return None
+            return False, True
 
         source_state = bool(source_res == "highres_scan")
 
         if source_state == self.is_highres_local and self.path_exists:
-            return None
+            return False, True
 
-        return source_state
+        return True, source_state
 
     def download(self) -> bool:
 
@@ -101,31 +118,19 @@ class CardObject:
         if self.face is not None:
             url += "&face=" + self.face
 
-        img = sesh.get(url, timeout=30)
+        img = self.handle_response(url)
 
-        try:
-            img.raise_for_status()
-        except HTTPError:
+        if img is None:
             return False
 
         self.img_path.write_bytes(img.content)
 
         return True
 
-    def persist_response(self) -> bool:
+    def message(self, total_progress: str, set_progress: str) -> None:
 
-        for i in range(1, 6):
-
-            if self.download():
-                return True
-
-            sleep(i * 30)
-
-        return False
-
-    def message(self, progress: str) -> None:
-
-        message = self.set_code.ljust(5) + progress + self.message_substr
+        message = total_progress + " " + self.set_code.ljust(6)
+        message += set_progress + self.message_substr
         utils.status(message, 5 if self.path_exists else 4)
 
 
@@ -158,7 +163,7 @@ class SetObject:
         self.card_total: int = len(self.card_entries)
         self.card_count: int = 0
 
-    def load_states(self) -> dict[str, bool]:
+    def read_states(self) -> dict[str, bool]:
 
         states_dict: dict[str, bool] = {}
 
@@ -167,9 +172,9 @@ class SetObject:
 
         return states_dict
 
-    def save_states(self) -> None:
+    def write_states(self) -> None:
 
-        if self.states_dict == self.load_states() or not self.states_dict:
+        if self.states_dict == self.read_states() or not self.states_dict:
             return
 
         self.states_path.write_text(
@@ -177,15 +182,21 @@ class SetObject:
             encoding="UTF-8",
         )
 
-    def progress(self) -> str:
+    def set_progress(self) -> str:
 
         return utils.progress_str(self.card_count, self.card_total, True)
+
+    def handle_httperror(self) -> None:
+
+        utils.status("HTTPError raised, saving & exiting...", 6)
+        self.write_states()
+        raise RuntimeError
 
     # pylint: disable=unused-argument
     def handle_sigint(self, signum, frame):
 
         utils.status("SIGINT recieved (Ctrl-C), saving & exiting...", 6)
-        self.save_states()
+        self.write_states()
         sys.exit(1)
 
 
