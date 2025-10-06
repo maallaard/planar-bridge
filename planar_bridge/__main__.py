@@ -12,34 +12,50 @@ if sys.version_info.major != 3 or sys.version_info.minor < 13:
     raise SystemExit("Python version must be at least 3.13")
 
 
-def main() -> None:
+def remaining_sets(set_entries: dict[str, Any]) -> None:
 
-    meta_obj: objects.MetaObject
-    set_obj: objects.SetObject
-    card_obj: objects.CardObject
+    sets_list: list[str] = []
 
-    set_entries: dict[str, Any]
+    for set_entry in set_entries["data"].values():
 
-    progress: str
+        set_obj = objects.SetObject(set_entry)
 
-    set_count: int
-    set_total: int
+        if (
+            not set_obj.states_obj.is_all_highres()
+            and set_obj.states_path.exists()
+        ):
+            sets_list.append(set_obj.set_code)
 
-    is_outdated: bool | None
+    sets_str = ", ".join(map(str, sets_list))
+    utils.status("Remaining sets with low res scans: " + sets_str, 0)
+
+
+def pull_meta() -> None:
 
     utils.status("Comparing local & source files...", 0)
 
-    meta_obj = objects.MetaObject()
+    meta_obj: objects.MetaObject = objects.MetaObject()
     is_outdated = meta_obj.is_outdated()
-
-    if is_outdated is None:
-        return
 
     if is_outdated:
         utils.status("Downloading bulk files...", 0)
         meta_obj.pull_bulk()
 
     utils.status(f"Loading bulk data ({meta_obj.date})...", 0)
+
+
+def pull_all() -> None:
+
+    set_obj: objects.SetObject
+    card_obj: objects.CardObject
+
+    set_entries: dict[str, Any]
+
+    set_count: int
+    set_total: int
+
+    pull_meta()
+
     set_entries = json.loads(paths.BULK_PATH.read_bytes())
 
     set_count = 0
@@ -56,9 +72,9 @@ def main() -> None:
             continue
 
         total_progress = utils.progress_str(set_count, set_total, False)
-        utils.status(total_progress + " " + set_obj.set_code.ljust(6), 2)
-
-        set_obj.states_dict = set_obj.read_states()
+        message = total_progress + " " + set_obj.set_code.ljust(6)
+        message += " AllHighRes: " + str(set_obj.states_obj.is_all_highres())
+        utils.status(message, 2)
 
         for card_entry in set_obj.card_entries:
 
@@ -69,7 +85,9 @@ def main() -> None:
             if card_obj.bad_card:
                 continue
 
-            card_obj.load_local_res(set_obj.states_dict.get(card_obj.img_name))
+            card_obj.init_highres_local(
+                set_obj.states_obj.get_state(card_obj.img_name)
+            )
 
             if card_obj.is_highres_local and card_obj.path_exists:
                 continue
@@ -77,21 +95,30 @@ def main() -> None:
             source_ctrl, source_res = card_obj.parse_source_res()
 
             if not source_ctrl and not source_res:
-                set_obj.handle_httperror()
+                set_obj.states_obj.write_states()
+                raise RuntimeError
 
             if not source_ctrl:
                 continue
 
             if not card_obj.download():
-                set_obj.handle_httperror()
+                set_obj.states_obj.write_states()
+                raise RuntimeError
 
-            set_obj.states_dict[card_obj.img_name] = source_res
+            set_obj.states_obj.take_state(card_obj.img_name, source_res)
 
             card_obj.message(total_progress, set_obj.set_progress())
 
-        set_obj.write_states()
+        set_obj.states_obj.write_states()
 
     utils.status("Finished successfully.", 0)
+
+    remaining_sets(set_entries)
+
+
+def main() -> None:
+
+    pull_all()
 
 
 if __name__ == "__main__":

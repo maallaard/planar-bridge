@@ -7,9 +7,6 @@ card_lang = "en"
 # Download reprints (significantly increases amount of duplicate cards).
 pull_reprints = false
 
-# Download scans of various cardbacks to .cardbacks/
-pull_cardbacks = false
-
 # List of sets that should always be parsed.
 # The Secret Lair sets have new cards added over time, so they are listed here.
 continuous_sets = [

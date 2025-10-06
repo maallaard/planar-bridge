@@ -1,19 +1,61 @@
 from time import sleep
 from pathlib import Path
-from typing import Any, Literal
-from urllib.error import HTTPError
+from typing import Any, Literal, NoReturn
 import gzip
 import json
-import sys
+
+from requests import Session
 
 from config import CONFIG
 import const
 import paths
 import utils
 
-from requests import Response, Session
 
-sesh = Session()
+session = Session()
+
+
+class StatesObject:
+
+    def __init__(self, states_path: Path) -> None:
+
+        self.states_path: Path = states_path
+        self.states_dict: dict[str, bool]
+
+    def read_states(self) -> dict[str, bool]:
+
+        states_dict: dict[str, bool] = {}
+
+        if self.states_path.exists():
+            states_dict = json.loads(self.states_path.read_bytes())
+
+        return states_dict
+
+    def write_states(self) -> None:
+
+        if self.states_dict == self.read_states() or not self.states_dict:
+            return
+
+        self.states_path.write_text(
+            json.dumps(self.states_dict, sort_keys=True),
+            encoding="UTF-8",
+        )
+
+    def init_states(self) -> None:
+
+        self.states_dict = self.read_states()
+
+    def get_state(self, name: str) -> bool | None:
+
+        return self.states_dict.get(name)
+
+    def take_state(self, name: str, res: bool) -> None:
+
+        self.states_dict[name] = res
+
+    def is_all_highres(self) -> bool:
+
+        return all(self.states_dict.values())
 
 
 class CardObject:
@@ -67,20 +109,7 @@ class CardObject:
         self.img_path: Path = set_dir / (self.img_name + ".jpg")
         self.path_exists: bool = self.img_path.exists()
 
-    def handle_response(self, url: str) -> Response | None:
-
-        response = sesh.get(url, timeout=30)
-
-        for i in range(1, 6):
-            try:
-                response.raise_for_status()
-                return response
-            except HTTPError:
-                sleep(i * 30 if i > 4 else 0)
-
-        return None
-
-    def load_local_res(self, card_state: bool | None) -> None:
+    def init_highres_local(self, card_state: bool | None) -> None:
 
         self.is_highres_local = False if card_state is None else card_state
 
@@ -89,8 +118,7 @@ class CardObject:
         sleep(const.TIMEOUT)
 
         url = f"https://api.scryfall.com/cards/{self.scry_id}?format=json"
-
-        source = self.handle_response(url)
+        source = utils.handle_response(session, url)
 
         if source is None:
             return False, False
@@ -118,7 +146,7 @@ class CardObject:
         if self.face is not None:
             url += "&face=" + self.face
 
-        img = self.handle_response(url)
+        img = utils.handle_response(session, url)
 
         if img is None:
             return False
@@ -141,7 +169,8 @@ class SetObject:
         self.set_dir: Path = paths.DATA_DIR / self.set_code
         self.states_path: Path = self.set_dir / ".states.json"
         self.is_partial: bool = bool(set_dict.get("isPartialPreview"))
-        self.states_dict: dict[str, bool] = {}
+        self.states_obj: StatesObject = StatesObject(self.states_path)
+        self.states_obj.init_states()
 
         omit_conditions: tuple[bool, ...] = (
             bool(str(set_dict["type"]) in CONFIG["exempt_types"]),
@@ -163,65 +192,40 @@ class SetObject:
         self.card_total: int = len(self.card_entries)
         self.card_count: int = 0
 
-    def read_states(self) -> dict[str, bool]:
-
-        states_dict: dict[str, bool] = {}
-
-        if self.states_path.exists():
-            states_dict = json.loads(self.states_path.read_bytes())
-
-        return states_dict
-
-    def write_states(self) -> None:
-
-        if self.states_dict == self.read_states() or not self.states_dict:
-            return
-
-        self.states_path.write_text(
-            json.dumps(self.states_dict, sort_keys=True),
-            encoding="UTF-8",
-        )
-
     def set_progress(self) -> str:
 
         return utils.progress_str(self.card_count, self.card_total, True)
 
-    def handle_httperror(self) -> None:
-
-        utils.status("HTTPError raised, saving & exiting...", 6)
-        self.write_states()
-        raise RuntimeError
-
     # pylint: disable=unused-argument
-    def handle_sigint(self, signum, frame):
+    def handle_sigint(self, signum, frame) -> NoReturn:
 
         utils.status("SIGINT recieved (Ctrl-C), saving & exiting...", 6)
-        self.write_states()
-        sys.exit(1)
+        self.states_obj.write_states()
+        raise KeyboardInterrupt
 
 
 class MetaObject:
     def __init__(self) -> None:
 
-        self.local: dict = {}
-        self.source: dict = {}
+        self.local: dict[str, str] = {}
+        self.source: dict[str, str] = {}
 
-        bulks_exist: tuple[bool, bool] = (
-            paths.BULK_PATH.exists(),
-            paths.META_PATH.exists(),
+        self.jsons_exist: bool = (
+            paths.BULK_PATH.exists() and paths.META_PATH.exists()
         )
 
-        self.bulks_exist: bool = all(bulks_exist)
-
         url = "https://mtgjson.com/api/v5/Meta.json"
-        dat = sesh.get(url, timeout=30)
-        dat.raise_for_status()
+        dat = utils.handle_response(session, url)
+
+        if dat is None:
+            raise RuntimeError
 
         self.source = self.fix_vers(dat.json()["meta"])
 
-        if self.bulks_exist:
-            self.local = json.loads(paths.META_PATH.read_bytes())
-            self.local = self.fix_vers(self.local["meta"])
+        if self.jsons_exist:
+            self.local = self.fix_vers(
+                json.loads(paths.META_PATH.read_bytes())["meta"]
+            )
 
         self.date: str = self.source["date"]
 
@@ -235,24 +239,23 @@ class MetaObject:
         for target in ("AllPrintings", "Meta"):
 
             url = f"https://mtgjson.com/api/v5/{target}.json.gz"
-            dat = sesh.get(url, timeout=30)
-            dat.raise_for_status()
+            dat = utils.handle_response(session, url)
+
+            if dat is None:
+                raise RuntimeError
 
             fob = paths.JSON_DIR / f"{target}.json"
             fob.write_bytes(gzip.decompress(dat.content))
 
-        if CONFIG["pull_cardbacks"]:
-            self.cardbacks()
+    def is_outdated(self) -> bool | NoReturn:
 
-    def is_outdated(self) -> bool | None:
-
-        if not self.bulks_exist and not self.local:
+        if not self.jsons_exist and not self.local:
             return True
 
         same_date: bool = self.local["date"] == self.source["date"]
 
         if same_date and not CONFIG["always_pull"]:
-            return None
+            raise SystemExit
 
         if self.local["version"] != const.MTGJSON_VERS:
 
@@ -264,22 +267,6 @@ class MetaObject:
             proceed = input("Do you want to proceed? [y/N]: ")
 
             if not utils.boolify_str(proceed, False):
-                return None
+                raise KeyboardInterrupt
 
         return not same_date
-
-    def cardbacks(self) -> None:
-
-        paths.CARDBACK_DIR.mkdir(exist_ok=True)
-
-        for i, url in enumerate(const.CARDBACK_URLS):
-
-            img_path = paths.CARDBACK_DIR / f"cardback-{i+1}.jpg"
-
-            if img_path.exists():
-                continue
-
-            img = sesh.get(url, timeout=30)
-            img.raise_for_status()
-
-            img_path.write_bytes(img.content)

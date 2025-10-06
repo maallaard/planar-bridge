@@ -5,12 +5,6 @@ MTGJSON_VERS: str = "5.2.2"
 
 TIMEOUT: float = 0.33
 
-CARDBACK_URLS: tuple[str, ...] = (
-    "https://i.imgur.com/xiYusFq.jpg",
-    "https://i.imgur.com/m8SkBeQ.jpg",
-    "https://i.imgur.com/FLa7Gth.jpg",
-)
-
 LAYOUT_COMBINED: list[str] = [
     "adventure",
     "aftermath",

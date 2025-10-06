@@ -1,5 +1,7 @@
-from time import strftime
+from time import sleep, strftime
+
 from colorama import Fore
+from requests import HTTPError, Response, Session
 
 
 def status(msg: str, lvl: int) -> None:
@@ -31,6 +33,28 @@ def status(msg: str, lvl: int) -> None:
         print(timestamp, prefix, line)
 
 
+def handle_response(session: Session, url: str) -> Response | None:
+
+    response = session.get(url, timeout=30)
+
+    for i in range(1, 6):
+        try:
+            response.raise_for_status()
+            return response
+        except HTTPError:
+            if i < 5:
+                message = f"HTTP status code {response.status_code}, "
+                message += int_to_ordinal(i) + " retry..."
+                status(message, 1)
+                sleep(i * 30)
+            else:
+                message = f"HTTP status code {response.status_code}, "
+                message += " too many retries, saving & exiting..."
+                status(message, 6)
+
+    return None
+
+
 def progress_str(count: int, total: int, arrow: bool) -> str:
 
     progress: str = f"({format(count / total, ".1%").zfill(5).rjust(5)})"
@@ -58,3 +82,15 @@ def boolify_str(bool_str: str, default: bool | None = None) -> bool:
     raise ValueError(
         f"Input '{bool_str}' does not resemble a boolean value: y/n, t/f, 1/0"
     )
+
+
+def int_to_ordinal(n: int) -> str:
+
+    suffix: str
+
+    if 11 <= (n % 100) <= 13:
+        suffix = "th"
+    else:
+        suffix = ["th", "st", "nd", "rd", "th"][min(n % 10, 4)]
+
+    return str(n) + suffix
