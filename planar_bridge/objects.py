@@ -20,7 +20,7 @@ class StatesObject:
     def __init__(self, states_path: Path) -> None:
 
         self.states_path: Path = states_path
-        self.states_dict: dict[str, bool]
+        self.states_dict: dict[str, bool] = self.read_states()
 
     def read_states(self) -> dict[str, bool]:
 
@@ -41,10 +41,6 @@ class StatesObject:
             encoding="UTF-8",
         )
 
-    def init_states(self) -> None:
-
-        self.states_dict = self.read_states()
-
     def get_state(self, name: str) -> bool | None:
 
         return self.states_dict.get(name)
@@ -59,17 +55,30 @@ class StatesObject:
 
 
 class CardObject:
-    def __init__(self, card_dict: dict[str, Any], set_dir: Path) -> None:
+    def __init__(
+        self, card_dict: dict[str, Any], states_obj: StatesObject, set_dir: Path
+    ) -> None:
 
         self.uuid: str = card_dict["uuid"]
         self.set_code: str = card_dict["setCode"]
         self.scry_id: str = card_dict["identifiers"]["scryfallId"]
         self.message_substr: str = self.uuid + " | " + card_dict["name"]
         self.face: Literal["front", "back"] | None = None
-        self.is_highres_local: bool
+        self.layout: str = card_dict["layout"]
 
-        layout: str = card_dict["layout"]
-        related: list[str] | None = card_dict.get("otherFaceIds")
+        self.bad_card: bool = self.__init_bad_card(card_dict)
+        self.img_name: str = self.__init_img_name(card_dict)
+
+        self.is_highres_local: bool | None = states_obj.get_state(self.img_name)
+
+        if self.layout in const.LAYOUT_TOKEN:
+            set_dir = set_dir / "tokens"
+
+        self.img_path: Path = set_dir / (self.img_name + ".jpg")
+        self.path_exists: bool = self.img_path.exists()
+
+    def __init_bad_card(self, card_dict: dict[str, Any]) -> bool:
+
         promo_types: list[str] | None = card_dict.get("promoTypes")
 
         if promo_types is None:
@@ -82,17 +91,21 @@ class CardObject:
             card_dict["language"] not in [CONFIG["card_lang"], "Phyrexian"],
             card_dict["name"] in ["Checklist", "Double-Faced"],
             bool(card_dict.get("isOnlineOnly")),
+            self.layout in const.LAYOUT_BAD,
             bool(card_dict.get("isFunny")),
-            layout in const.LAYOUT_BAD,
             len(promo_crosscheck) > 0,
         )
 
-        self.bad_card: bool = any(bad_card_conditions)
+        return any(bad_card_conditions)
 
-        if layout in const.LAYOUT_TWOSIDED:
+    def __init_img_name(self, card_dict: dict[str, Any]) -> str:
+
+        related: list[str] | None = card_dict.get("otherFaceIds")
+
+        if self.layout in const.LAYOUT_TWOSIDED:
             self.face = "front" if card_dict.get("side") == "a" else "back"
 
-        if layout in const.LAYOUT_COMBINED and related is not None:
+        if self.layout in const.LAYOUT_COMBINED and related is not None:
             img_name = related
             img_name.append(self.uuid)
             img_name = list(dict.fromkeys(img_name))
@@ -101,17 +114,7 @@ class CardObject:
         else:
             img_name = self.uuid
 
-        self.img_name: str = img_name
-
-        if layout in const.LAYOUT_TOKEN:
-            set_dir = set_dir / "tokens"
-
-        self.img_path: Path = set_dir / (self.img_name + ".jpg")
-        self.path_exists: bool = self.img_path.exists()
-
-    def init_highres_local(self, card_state: bool | None) -> None:
-
-        self.is_highres_local = False if card_state is None else card_state
+        return img_name
 
     def parse_source_res(self) -> tuple[bool, bool]:
 
@@ -170,7 +173,6 @@ class SetObject:
         self.states_path: Path = self.set_dir / ".states.json"
         self.is_partial: bool = bool(set_dict.get("isPartialPreview"))
         self.states_obj: StatesObject = StatesObject(self.states_path)
-        self.states_obj.init_states()
 
         omit_conditions: tuple[bool, ...] = (
             bool(str(set_dict["type"]) in CONFIG["exempt_types"]),
@@ -214,38 +216,42 @@ class MetaObject:
             paths.BULK_PATH.exists() and paths.META_PATH.exists()
         )
 
-        url = "https://mtgjson.com/api/v5/Meta.json"
-        dat = utils.handle_response(session, url)
-
-        if dat is None:
-            raise RuntimeError
-
-        self.source = self.fix_vers(dat.json()["meta"])
-
         if self.jsons_exist:
-            self.local = self.fix_vers(
+            self.local = self.__fix_vers(
                 json.loads(paths.META_PATH.read_bytes())["meta"]
             )
 
+        self.source = self.__init_source()
+
         self.date: str = self.source["date"]
 
-    def fix_vers(self, to_fix: dict[str, str]) -> dict[str, str]:
+    def __fix_vers(self, to_fix: dict[str, str]) -> dict[str, str]:
 
         to_fix.update({"version": to_fix["version"].split("+")[0]})
         return to_fix
 
-    def pull_bulk(self) -> None:
+    def __init_source(self) -> dict[str, str] | NoReturn:
+
+        url = "https://mtgjson.com/api/v5/Meta.json"
+        meta = utils.handle_response(session, url)
+
+        if meta is None:
+            raise RuntimeError
+
+        return self.__fix_vers(meta.json()["meta"])
+
+    def pull_bulk(self) -> None | NoReturn:
 
         for target in ("AllPrintings", "Meta"):
 
             url = f"https://mtgjson.com/api/v5/{target}.json.gz"
-            dat = utils.handle_response(session, url)
+            all_printings = utils.handle_response(session, url)
 
-            if dat is None:
+            if all_printings is None:
                 raise RuntimeError
 
             fob = paths.JSON_DIR / f"{target}.json"
-            fob.write_bytes(gzip.decompress(dat.content))
+            fob.write_bytes(gzip.decompress(all_printings.content))
 
     def is_outdated(self) -> bool | NoReturn:
 
@@ -259,8 +265,7 @@ class MetaObject:
 
         if self.local["version"] != const.MTGJSON_VERS:
 
-            message = "MTGJSON has been updated to v"
-            message += self.source["version"]
+            message = "MTGJSON has been updated to v" + self.source["version"]
             message += "\n" + const.VERS_WARNING
 
             utils.status(message, 1)

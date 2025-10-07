@@ -33,4 +33,3 @@ BULK_PATH: Path = JSON_DIR / "AllPrintings.json"
 META_PATH: Path = JSON_DIR / "Meta.json"
 
 CONFIG_PATH: Path = DATA_DIR / "config.toml"
-CARDBACK_DIR: Path = DATA_DIR / ".cardbacks"

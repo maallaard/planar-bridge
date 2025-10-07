@@ -19,8 +19,8 @@ LAYOUT_TWOSIDED: list[str] = [
 ]
 
 LAYOUT_TOKEN: list[str] = [
-    "token",
     "double_faced_token",
+    "token",
 ]
 
 LAYOUT_BAD: list[str] = [
@@ -30,30 +30,30 @@ LAYOUT_BAD: list[str] = [
 ]
 
 LANGUAGE_MAP: dict[str, str] = {
+    "ar": "Arabic",
+    "de": "German",
     "en": "English",
     "es": "Spanish",
     "fr": "French",
-    "de": "German",
+    "grc": "Ancient Greek",
+    "he": "Hebrew",
     "it": "Italian",
-    "pt": "Portuguese (Brazil)",
     "ja": "Japanese",
     "ko": "Korean",
+    "la": "Latin",
+    "ph": "Phyrexian",
+    "pt": "Portuguese (Brazil)",
+    "px": "Phyrexian",
+    "qya": "Quenya",
     "ru": "Russian",
+    "sa": "Sanskrit",
     "zhs": "Chinese Simplified",
     "zht": "Chinese Traditional",
-    "he": "Hebrew",
-    "la": "Latin",
-    "grc": "Ancient Greek",
-    "ar": "Arabic",
-    "sa": "Sanskrit",
-    "ph": "Phyrexian",
-    "px": "Phyrexian",
 }
 
 DEFAULT_CONFIG: dict[str, Any] = {
     "always_pull": True,
     "pull_reprints": False,
-    "pull_cardbacks": False,
     "card_lang": "en",
     "pardoned_sets": [
         "30A",
