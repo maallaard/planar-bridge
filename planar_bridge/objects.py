@@ -284,8 +284,6 @@ class MetaObject:
 
     def is_outdated(self) -> bool | NoReturn:
 
-        message: str
-
         if not self.jsons_exist and not self.local:
             return True
 

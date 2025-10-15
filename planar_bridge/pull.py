@@ -126,7 +126,7 @@ def pull_all() -> None:
 
         progress: str = utils.progress_str(set_count, set_total, False)
 
-        pull_set(set_obj, total_progress)
+        pull_set(set_obj, progress)
 
     utils.status("Finished successfully.", 0)
 
