@@ -27,7 +27,7 @@ def status(msg: str, lvl: int) -> None:
             raise ValueError(lvl)
 
     prefix += Fore.RESET + ":"
-    timestamp = "[" + Fore.CYAN + strftime("%H:%M:%S") + Fore.RESET + "]"
+    timestamp: str = "[" + Fore.CYAN + strftime("%H:%M:%S") + Fore.RESET + "]"
 
     for line in msg.splitlines():
         print(timestamp, prefix, line)
@@ -35,22 +35,28 @@ def status(msg: str, lvl: int) -> None:
 
 def handle_response(session: Session, url: str) -> Response | None:
 
-    response = session.get(url, timeout=30)
+    message: tuple[str, ...]
+    response: Response = session.get(url, timeout=30)
 
-    for i in range(1, 6):
+    for i in range(1, 5):
+
         try:
             response.raise_for_status()
             return response
+
         except HTTPError:
-            if i < 5:
-                message = f"HTTP status code {response.status_code}, "
-                message += int_to_ordinal(i) + " retry..."
-                status(message, 1)
-                sleep(i * 30)
-            else:
-                message = f"HTTP status code {response.status_code}, "
-                message += " too many retries, saving & exiting..."
-                status(message, 6)
+            message = (
+                f"HTTP status code {response.status_code},",
+                int_to_ordinal(i) + " retry...",
+            )
+            status((" ").join(message), 1)
+            sleep(i * 30)
+
+    message = (
+        f"HTTP status code {response.status_code},",
+        "too many retries, saving & exiting...",
+    )
+    status((" ").join(message), 6)
 
     return None
 
@@ -62,7 +68,7 @@ def progress_str(count: int, total: int, arrow: bool) -> str:
     if count == total:
         progress = " (100%)"
     if arrow:
-        progress += "> "
+        progress += ">"
 
     return progress
 
@@ -79,9 +85,7 @@ def boolify_str(bool_str: str, default: bool | None = None) -> bool:
     if bool_str in ["n", "f", "0"]:
         return False
 
-    raise ValueError(
-        f"Input '{bool_str}' does not resemble a boolean value: y/n, t/f, 1/0"
-    )
+    raise ValueError(f"Input '{bool_str}' does not resemble a yes/no response.")
 
 
 def int_to_ordinal(n: int) -> str:

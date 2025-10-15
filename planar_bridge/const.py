@@ -1,6 +1,3 @@
-from typing import Any
-
-
 MTGJSON_VERS: str = "5.2.2"
 
 TIMEOUT: float = 0.33
@@ -51,8 +48,7 @@ LANGUAGE_MAP: dict[str, str] = {
     "zht": "Chinese Traditional",
 }
 
-DEFAULT_CONFIG: dict[str, Any] = {
-    "always_pull": True,
+DEFAULT_CONFIG: dict[str, bool | str | list[str]] = {
     "pull_reprints": False,
     "card_lang": "en",
     "pardoned_sets": [
@@ -98,7 +94,7 @@ DEFAULT_CONFIG: dict[str, Any] = {
     ],
 }
 
-VERS_WARNING: str = "\n".join(
+VERS_WARNING: str = ("\n").join(
     (
         "Planar Bridge is only expected to work with v" + MTGJSON_VERS,
         "Make sure there are no conflicts before proceeding!",

@@ -1,10 +1,11 @@
-from time import sleep
+from dataclasses import dataclass
 from pathlib import Path
+from time import sleep
 from typing import Any, Literal, NoReturn
 import gzip
 import json
 
-from requests import Session
+from requests import Response, Session
 
 from config import CONFIG
 import const
@@ -54,102 +55,121 @@ class StatesObject:
         return all(self.states_dict.values())
 
 
-class CardObject:
-    def __init__(
-        self, card_dict: dict[str, Any], states_obj: StatesObject, set_dir: Path
-    ) -> None:
+@dataclass
+class CardFields:
 
-        self.uuid: str = card_dict["uuid"]
-        self.set_code: str = card_dict["setCode"]
-        self.scry_id: str = card_dict["identifiers"]["scryfallId"]
-        self.message_substr: str = self.uuid + " | " + card_dict["name"]
-        self.face: Literal["front", "back"] | None = None
-        self.layout: str = card_dict["layout"]
+    uuid: str
+    layout: str
+    scry_id: str
+    message_substr: str
+    is_bad: bool
+    filename: str
+    face: Literal["front", "back"] | None
 
-        self.bad_card: bool = self.__init_bad_card(card_dict)
-        self.img_name: str = self.__init_img_name(card_dict)
+    def __init__(self, card_dict: dict[str, Any]) -> None:
 
-        self.is_highres_local: bool | None = states_obj.get_state(self.img_name)
+        self.uuid = card_dict["uuid"]
+        self.layout = card_dict["layout"]
+        self.scry_id = card_dict["identifiers"]["scryfallId"]
+        self.message_substr = self.uuid + " | " + card_dict["name"]
+        self.is_bad = self.__init_is_bad(card_dict)
+        self.filename = self.__init_filename(card_dict)
 
-        if self.layout in const.LAYOUT_TOKEN:
-            set_dir = set_dir / "tokens"
+        if self.layout in const.LAYOUT_TWOSIDED:
+            if card_dict.get("side") == "a":
+                self.face = "front"
+            else:
+                self.face = "back"
+        else:
+            self.face = None
 
-        self.img_path: Path = set_dir / (self.img_name + ".jpg")
-        self.path_exists: bool = self.img_path.exists()
+    def __init_is_bad(self, card_dict: dict[str, Any]) -> bool:
 
-    def __init_bad_card(self, card_dict: dict[str, Any]) -> bool:
+        promos: list[str] | None = card_dict.get("promoTypes")
 
-        promo_types: list[str] | None = card_dict.get("promoTypes")
+        if promos is None:
+            promos = []
 
-        if promo_types is None:
-            promo_types = []
+        promos_crosscheck: set[str] = set(CONFIG.exempt_promos) & set(promos)
 
-        promo_crosscheck = set(CONFIG["exempt_promos"]) & set(promo_types)
-
-        bad_card_conditions: tuple[bool, ...] = (
-            bool(card_dict.get("isReprint")) and not CONFIG["pull_reprints"],
-            card_dict["language"] not in [CONFIG["card_lang"], "Phyrexian"],
+        is_bad_conditions: tuple[bool, ...] = (
+            bool(card_dict.get("isReprint")) and not CONFIG.pull_reprints,
+            card_dict["language"] not in [CONFIG.card_lang, "Phyrexian"],
             card_dict["name"] in ["Checklist", "Double-Faced"],
             bool(card_dict.get("isOnlineOnly")),
             self.layout in const.LAYOUT_BAD,
             bool(card_dict.get("isFunny")),
-            len(promo_crosscheck) > 0,
+            len(promos_crosscheck) > 0,
         )
 
-        return any(bad_card_conditions)
+        return any(is_bad_conditions)
 
-    def __init_img_name(self, card_dict: dict[str, Any]) -> str:
+    def __init_filename(self, card_dict: dict[str, Any]) -> str:
 
-        related: list[str] | None = card_dict.get("otherFaceIds")
+        faces_list: list[str] | None = card_dict.get("otherFaceIds")
 
-        if self.layout in const.LAYOUT_TWOSIDED:
-            self.face = "front" if card_dict.get("side") == "a" else "back"
+        if self.layout in const.LAYOUT_COMBINED and faces_list is not None:
+            faces_list.append(self.uuid)
+            faces_list.sort()
+            return ("_").join(map(str, faces_list))
 
-        if self.layout in const.LAYOUT_COMBINED and related is not None:
-            img_name = related
-            img_name.append(self.uuid)
-            img_name = list(dict.fromkeys(img_name))
-            img_name.sort()
-            img_name = ("_").join(map(str, img_name))
-        else:
-            img_name = self.uuid
+        return self.uuid
 
-        return img_name
 
-    def parse_source_res(self) -> tuple[bool, bool]:
+class CardObject:
+
+    def __init__(
+        self, card_dict: dict[str, Any], states_obj: StatesObject, set_dir: Path
+    ) -> None:
+
+        self.card: CardFields = CardFields(card_dict)
+
+        self.local_state: bool | None = states_obj.get_state(self.card.filename)
+
+        if self.card.layout in const.LAYOUT_TOKEN:
+            set_dir = set_dir / "tokens"
+
+        self.img_path: Path = set_dir / (self.card.filename + ".jpg")
+        self.path_exists: bool = self.img_path.exists()
+
+    def parse_source_state(self) -> tuple[bool, bool]:
+
+        url: str
 
         sleep(const.TIMEOUT)
 
-        url = f"https://api.scryfall.com/cards/{self.scry_id}?format=json"
-        source = utils.handle_response(session, url)
+        url = f"https://api.scryfall.com/cards/{self.card.scry_id}?format=json"
+        source: Response | None = utils.handle_response(session, url)
 
         if source is None:
             return False, False
 
-        source_res = str(source.json()["image_status"])
+        source_res: str = source.json()["image_status"]
 
         if source_res in ["placeholder", "missing"]:
             return False, True
 
-        source_state = bool(source_res == "highres_scan")
+        source_state: bool = source_res == "highres_scan"
 
-        if source_state == self.is_highres_local and self.path_exists:
+        if source_state == self.local_state and self.path_exists:
             return False, True
 
         return True, source_state
 
     def download(self) -> bool:
 
+        url: str
+
         self.img_path.parent.mkdir(exist_ok=True, parents=True)
 
         sleep(const.TIMEOUT)
 
-        url = f"https://api.scryfall.com/cards/{self.scry_id}?format=image"
+        url = f"https://api.scryfall.com/cards/{self.card.scry_id}?format=image"
 
-        if self.face is not None:
-            url += "&face=" + self.face
+        if self.card.face is not None:
+            url += "&face=" + self.card.face
 
-        img = utils.handle_response(session, url)
+        img: Response | None = utils.handle_response(session, url)
 
         if img is None:
             return False
@@ -158,32 +178,39 @@ class CardObject:
 
         return True
 
-    def message(self, total_progress: str, set_progress: str) -> None:
+    def messager(self, progress: str, set_progress: str, set_code: str) -> None:
 
-        message = total_progress + " " + self.set_code.ljust(6)
-        message += set_progress + self.message_substr
-        utils.status(message, 5 if self.path_exists else 4)
+        message: tuple[str, ...] = (
+            progress,
+            set_code.ljust(6),
+            set_progress,
+            self.card.message_substr,
+        )
+
+        utils.status((" ").join(message), 5 if self.path_exists else 4)
 
 
 class SetObject:
+
     def __init__(self, set_dict: dict[str, Any]) -> None:
 
         self.set_code: str = set_dict["code"]
         self.set_dir: Path = paths.DATA_DIR / self.set_code
-        self.states_path: Path = self.set_dir / ".states.json"
         self.is_partial: bool = bool(set_dict.get("isPartialPreview"))
-        self.states_obj: StatesObject = StatesObject(self.states_path)
+        self.states_obj: StatesObject = StatesObject(
+            self.set_dir / ".states.json"
+        )
 
-        omit_conditions: tuple[bool, ...] = (
-            bool(str(set_dict["type"]) in CONFIG["exempt_types"]),
-            bool(self.set_code in CONFIG["exempt_sets"]),
+        to_omit_conditions: tuple[bool, ...] = (
+            bool(str(set_dict["type"]) in CONFIG.exempt_types),
+            bool(self.set_code in CONFIG.exempt_sets),
             bool(set_dict.get("isForeignOnly")),
             bool(set_dict.get("isOnlineOnly")),
         )
 
-        self.to_omit: bool = any(omit_conditions)
+        self.to_omit: bool = any(to_omit_conditions)
 
-        if self.set_code in CONFIG["pardoned_sets"]:
+        if self.to_omit and self.set_code in CONFIG.pardoned_sets:
             self.to_omit = False
 
         self.card_entries: list[dict[str, Any]] = [
@@ -191,12 +218,15 @@ class SetObject:
             *list(set_dict["tokens"]),
         ]
 
-        self.card_total: int = len(self.card_entries)
-        self.card_count: int = 0
+        self.progress: tuple[int, int] = (0, len(self.card_entries))
 
-    def set_progress(self) -> str:
+    def increase_progress(self) -> None:
 
-        return utils.progress_str(self.card_count, self.card_total, True)
+        self.progress = (self.progress[0] + 1, self.progress[1])
+
+    def inner_progress(self) -> str:
+
+        return utils.progress_str(*self.progress, True)
 
     # pylint: disable=unused-argument
     def handle_sigint(self, signum, frame) -> NoReturn:
@@ -207,6 +237,7 @@ class SetObject:
 
 
 class MetaObject:
+
     def __init__(self) -> None:
 
         self.local: dict[str, str] = {}
@@ -223,8 +254,6 @@ class MetaObject:
 
         self.source = self.__init_source()
 
-        self.date: str = self.source["date"]
-
     def __fix_vers(self, to_fix: dict[str, str]) -> dict[str, str]:
 
         to_fix.update({"version": to_fix["version"].split("+")[0]})
@@ -232,8 +261,8 @@ class MetaObject:
 
     def __init_source(self) -> dict[str, str] | NoReturn:
 
-        url = "https://mtgjson.com/api/v5/Meta.json"
-        meta = utils.handle_response(session, url)
+        url: str = "https://mtgjson.com/api/v5/Meta.json"
+        meta: Response | None = utils.handle_response(session, url)
 
         if meta is None:
             raise RuntimeError
@@ -244,32 +273,37 @@ class MetaObject:
 
         for target in ("AllPrintings", "Meta"):
 
-            url = f"https://mtgjson.com/api/v5/{target}.json.gz"
-            all_printings = utils.handle_response(session, url)
+            url: str = f"https://mtgjson.com/api/v5/{target}.json.gz"
+            bulk_json: Response | None = utils.handle_response(session, url)
 
-            if all_printings is None:
+            if bulk_json is None:
                 raise RuntimeError
 
-            fob = paths.JSON_DIR / f"{target}.json"
-            fob.write_bytes(gzip.decompress(all_printings.content))
+            fob: Path = paths.JSON_DIR / f"{target}.json"
+            fob.write_bytes(gzip.decompress(bulk_json.content))
 
     def is_outdated(self) -> bool | NoReturn:
+
+        message: str
 
         if not self.jsons_exist and not self.local:
             return True
 
         same_date: bool = self.local["date"] == self.source["date"]
 
-        if same_date and not CONFIG["always_pull"]:
+        if same_date:
             raise SystemExit
 
         if self.local["version"] != const.MTGJSON_VERS:
 
-            message = "MTGJSON has been updated to v" + self.source["version"]
-            message += "\n" + const.VERS_WARNING
+            message: tuple[str, ...] = (
+                "MTGJSON has been updated to v",
+                self.source["version"] + "\n",
+                const.VERS_WARNING,
+            )
 
-            utils.status(message, 1)
-            proceed = input("Do you want to proceed? [y/N]: ")
+            utils.status(("").join(message), 1)
+            proceed: str = input("Do you want to proceed? [y/N]: ")
 
             if not utils.boolify_str(proceed, False):
                 raise KeyboardInterrupt
